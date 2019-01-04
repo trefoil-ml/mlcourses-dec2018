@@ -1,0 +1,268 @@
+---
+title: "ML Algorithms for classification"
+author: "Hicham Zmarrou"
+date: "Notebook -- <http://bit.ly/2q9NPSU>  <br /> <br />"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+subtitle: Decision trees
+venue: GL R courses
+---
+
+
+<hr>
+
+[Visit my website](http://trefoil.ml/) for more like this!
+
+
+____________________________________
+
+
+You are here: Home / Exercises / Exercises (beginner) / Recursive Partitioning and Regression Trees Exercises
+
+ 
+################
+##            ##
+## Exercise 1 ##
+##            ##
+################
+Consider the Kyphosis data frame(type `help("kyphosis")` for more details), that contains:
+
+
+* `Kyphosis`:a factor with levels "absent" and  "present"" indicating if a kyphosis (a type of deformation) was present after the operation.
+
+* __Age__: in months.
+
+* __Number__: the number of vertebrae involved.
+
+* __Start__: the number of the first (topmost) vertebra operated on.
+
+
+1. Build a tree to classify `Kyphosis` from `Age`, `Number` and `Start`.
+
+```{r}
+library('rattle')
+library('rpart')
+library("rpart.plot")
+TREE=rpart(Kyphosis ~ Age + Number + Start, data=kyphosis,method="class")
+#TREE
+fancyRpartPlot(TREE)
+asRules(TREE)
+```
+### How to read this these results: 
+Consider for example **Rule number 23**. 
+The rule gives the path to this final node (1. if Start>=8.5;  2. if Start< 14.5; 3. if Age>=55 and if Age< 111)
+The `prob` means how likely will the Kyphosis present under the path of this rule.
+`cover= xx` means there are `xx` records split into that path (branch) of the tree at that node. 
+ 
+
+
+
+################
+##            ##
+## Exercise 2 ##
+##            ##
+################
+
+
+Consider the tree build in exercise 1.
+1.  Which variables are used to explain kyhosis presence?
+2.  How many observations contains the terminal nodes.
+
+
+```{r}
+fancyRpartPlot(TREE)
+TREE
+printcp(TREE)
+plotcp(TREE)
+```
+
+
+###############
+##            ##
+## Exercise 3 ##
+##            ##
+################
+
+Consider the Kyphosis data frame.
+
+1. Build a tree using the first 60 observations of kyphosis.
+
+```{r}
+TREE=rpart(Kyphosis ~ Age + Number + Start, data=kyphosis[1:60,],method="class")
+```
+
+2. Predict the kyphosis presence for the other 21 observations.
+
+```{r}
+PR=predict(TREE,kyphosis[61:81,],type='class')
+```
+
+3. Which is the misclassification rate (prediction error)
+```{r}
+test=kyphosis$Kyphosis[61:81]
+table(PR,test)
+```
+```{r}
+rate=100*length(which(PR!=test))/length(PR)
+
+```
+
+The misclassification rate is: `r rate`
+
+###############
+##            ##
+## Exercise 4 ##
+##            ##
+################
+
+Consider the iris data frame(type `help('iris')` for more details).
+1. Build a tree to classify Species from the other variables.
+
+```{r}
+TREE2=rpart(Species ~ ., data=iris,method="class")
+TREE2
+```
+
+2. Plot the trees.
+
+```{r}
+fancyRpartPlot(TREE2)
+```
+
+
+
+###############
+##            ##
+## Exercise 5 ##
+##            ##
+################
+
+Consider the tree build in exercise 4.
+1. Prune the the using median complexity parameter (cp) associated to the tree.
+```{r}
+TP=prune(TREE2,cp=median(TREE2$cptable[,'CP']))
+```
+
+2. Plot in the same window the pruned and the original tree.
+
+```{r}
+par(mfrow=c(1,2))
+
+fancyRpartPlot(TREE2)
+fancyRpartPlot(TP)
+
+
+```
+
+
+################
+##            ##
+## Exercise 6 ##
+##            ##
+################
+
+Consider the tree build in exercise 4.
+
+1. In which terminal nodes is clasified each observations of iris?
+
+```{r}
+TREE2$where
+```
+
+2. Which Specie has a flower of Petal.Length greater than 2.45 and Petal.Width less than 1.75.
+
+###############
+##            ##
+## Exercise 7 ##
+##            ##
+################
+
+Consider the car90 data frame(type help('car90') for more details).
+1. Build a tree to predict Price from the other variables.
+
+```{r}
+tree=rpart(Price ~ ., data=car90,method="anova")
+fancyRpartPlot(tree)
+```
+
+2. Plot the trees, add nodes information.
+
+###############
+##            ##
+## Exercise 8 ##
+##            ##
+################
+
+
+Consider the tree build in exercise 7.
+1. Which variables are used to explain the price?
+```{r}
+#tree
+#printcp(tree)
+asRules(tree)
+```
+
+2. Which terminal nodes have a value of mean Price, less than mean(car90$Price)?
+```{r}
+summary(tree)
+```
+
+###############
+##            ##
+## Exercise 9 ##
+##            ##
+################
+
+
+
+ 
+Consider the car.test.frame data frame (type help('car.test.frame') for more details).
+1. Build a tree to explain Mileage using the other variables.
+
+```{r}
+TC=rpart(Mileage~., data=car.test.frame)
+TC
+```
+
+2. Snip the tree in nodes number 2.
+```{r}
+TS=snip.rpart(TC,toss=2)
+```
+
+3. Plot both tree together
+```{r}
+fancyRpartPlot(TC)
+```
+
+################
+##            ##
+## Exercise 10##
+##            ##
+################
+
+Consider the tree build in exercise 9.
+1. Which is the depth of the tree (with the root node counted as depth 0).
+2. Set the maximum depth of the final tree on 2
+```{r}
+TC2=rpart(Mileage~., data=car.test.frame,maxdepth=2)
+fancyRpartPlot(TC2)
+```
+
+
+```{r}
+#plot both together
+par(mfrow=c(1,2))
+fancyRpartPlot(TC)
+fancyRpartPlot(TC2)
+
+
+```
+

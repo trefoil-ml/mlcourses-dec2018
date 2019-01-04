@@ -1,0 +1,85 @@
+---
+title: "Introduction "
+subtitle: "Machine Learning Courses"
+author: "Hicham Zmarrou, PhD"
+date: "`r Sys.Date()`<br /> <br />"
+output:
+  beamer_presentation:
+    incremental: true
+    theme: "Malmoe"
+    colortheme: "default"
+    fonttheme: "default"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+# About the Course 
+
+## Administrivia
+
+- [Github repository](https://github.com/trefoil-ml/trefoil-ml-courses) 
+-
+
+
+
+## Contact Information
+
+- hzmarrou@gmail.com
+- info@tridata.nl 
+
+
+## Course Purpose & Approach  
+
+
+## Prereqiusites
+
+- Basic concepts from calculus, linear algebra, probability theory and statistics
+- Python programming skills.
+
+
+## What software you will need
+
+As for now, you will only need 
+
+1. Anaconda (built with Python 3.6) to reproduce the code in the course, or  
+
+2. A recent version of __[R](https://r-project.org)__
+
+3. A recent version of __[RStudio](https://rstudio.com)__ 
+
+
+Later in the course, you willl have to install other libraries. 
+
+
+
+
+
+## Prereqiusites
+
+- Basic concepts from calculus, linear algebra, probability theory and statistics
+- Python or R programming skills.
+
+
+## Course Content
+
+- Machine Learning for everyone
+- Machine Leraning concepts 
+- Python for data scientists??
+- Classification, Decision Trees, and $k$ Nearest Neighbors
+- Linear Classification and Regression
+- Bagging and Random Forest
+- Gradient Boosting
+- Feature engineering and feature selection
+- Dimension reduction: Principal Component Analysis, t-SNE and Clustering
+- Time series analysis with Python
+- Best Practices for ML Engineering
+
+
+
+
+
+
+

@@ -1,0 +1,173 @@
+---
+title: "Predicting bike sharing demand with Prophet"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+___________________________________________________________________________________________________________
+
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='img/', echo=TRUE, warning=FALSE, message=FALSE,digits = 3)
+```
+
+in this exercice you will give `prophet` try and  use a dataset from a Kaggle competition that took place a couple of years ago related to forecast [bike sharing demand](https://www.kaggle.com/c/bike-sharing-demand) in Washington DC.
+
+
+
+## The Data
+The data set contains several features, including:
+
+* date-time
+
+* holiday (as a binary variable indicating whether the day is considered a holiday)
+
+* weather conditions (a categorical variable with 4 classes)
+
+* temperature
+
+* humidity
+
+* windspeed
+
+* total number of bike rentals
+
+```{r}
+# Libraries
+library(tidyverse)
+library(lubridate)
+library(prophet)
+library(forecast)
+
+# Read data
+bikes <- read_csv('./data/bikes.csv') %>%
+    mutate(datetime = date(datetime))
+head(bikes,5)
+```
+
+
+
+
+The data set provides hourly rental data spanning two years (2011 and 2012). For the competition, the training set is comprised of the first 19 days of each month, while the test set is the 20th to the end of the month. The objective is to predict the total count of bikes rented during each hour covered by the test set, using only information available prior to the rental period.
+
+Because the data is from a competition, the test set does not contain the total count of bikes rented, so for this experiment it cannot be use to evaluate the model's performance. Another issue is that Prophet works best with daily periodicity data, so I had to transform the data from an hourly to a daily time scale.
+
+From the features above, the ones we are interested in are the date-time, holiday and total number of bike rentals (`count`).
+
+
+
+First, we divide the data in three parts: the whole year 2011 is used for model fitting, the first half of 2012 is used as a validation set for parameter tuning, and the second half of 2012 is the testing set to check the performance of the selected model. Although we do not have data for the whole month, this does not seem to be an issue for the Prophet package as it is robust to missing data.
+
+
+```{r}
+# Separate data
+train <- bikes %>% select(datetime, count) %>%
+    filter(datetime < as.Date("2012-01-01")) %>%
+    group_by(datetime) %>%
+    summarise(y = sum(count))
+names(train) <- c('ds', 'y')
+
+valid <- bikes %>% select(datetime, count) %>%
+    filter(datetime >= as.Date("2012-01-01") & datetime < as.Date("2012-07-01")) %>%
+    group_by(datetime) %>%
+    summarise(y = sum(count))
+names(valid) <- c('ds', 'y')
+
+test <- bikes %>% select(datetime, count) %>%
+    filter(datetime >= as.Date("2012-07-01")) %>%
+    group_by(datetime) %>%
+    summarise(y = sum(count))
+names(test) <- c('ds', 'y')
+```
+
+
+The holiday feature is a binary variable that only tells us if the date is a holiday, but does not provide information about which holiday it is referring to. 
+After some research we identified these dates, given that Prophet uses this information to properly identify the contribution of a particular holiday (something that it is quite useful). I used this [site](http://www.officeholidays.com/countries/usa/2011.php) that contains details about the federal holidays in the USA.
+
+```{r}
+holidays <- filter(bikes, holiday == 1) %>% 
+    select(datetime) %>%
+    distinct()
+holidays$holiday = c('Martin Luther King', 'Emancipation Day', 'Independence Day',
+                     'Labor Day', 'Columbus Day', 'Veterans Day', 'New Year', 
+                     'Martin Luther King', 'Emancipation Day', 'Independence Day',
+                     'Labor Day', 'Columbus Day', 'Veterans Day')
+names(holidays) <- c('ds', 'holiday')
+holidays
+```
+
+
+
+
+Finally, the parameters that require some tuning are related to the flexibility that we want to give the model to fit change points, seasonality and holidays. A non-exhaustive grid search is done just to have a vague idea of the best values for the parameters. This step can be skipped if the user has some expert knowledge about the task at hand.
+
+
+```{r}
+# Search grid
+prophetGrid <- expand.grid(changepoint_prior_scale = c(0.05, 0.5, 0.001),
+                           seasonality_prior_scale = c(100, 10, 1),
+                           holidays_prior_scale = c(100, 10, 1),
+                           capacity = c(6043, 6500, 7000, 8000),
+                           growth = 'logistic')
+```
+
+
+## The Model
+
+A grid search is performed using the Mean Absolute Error (MAE) as the performance metric to identify the best parameters.
+
+
+```{r}
+results <- vector(mode = 'numeric', length = nrow(prophetGrid))
+
+# Search best parameters
+for (i in seq_len(nrow(prophetGrid))) {
+  
+    seed(2003)
+  
+    parameters <- prophetGrid[i, ]
+    if (parameters$growth == 'logistic') {train$cap <- parameters$capacity}
+    
+    #Fit a prophet model 
+    m <- prophet(train, growth = parameters$growth, holidays = holidays,
+                 seasonality.prior.scale = parameters$seasonality_prior_scale, 
+                 changepoint.prior.scale = parameters$changepoint_prior_scale,
+                 holidays.prior.scale = parameters$holidays_prior_scale)
+    
+    future <- make_future_dataframe(m, periods = 184)
+    if (parameters$growth == 'logistic') {future$cap <- parameters$capacity}
+    
+    # use the model m to predict/forcast the 
+    forecast <- predict(m, future)
+    
+    results[i] <- forecast::accuracy(forecast[as.Date(forecast$ds) %in% valid$ds, 'yhat'], valid$y)[ , 'MAE']
+}
+
+prophetGrid <- cbind(prophetGrid, results)
+best_params <- prophetGrid[prophetGrid$results == min(results), ]
+```
+
+
+
+The best parameters found are:
+
+Carrying capacity: 8,000
+Change point prior scale: 0.5
+Seasonality prior scale: 10
+Holidays prior scale: 1
+The model is then retrained using these parameters on both the training and validation sets.
+
+
+

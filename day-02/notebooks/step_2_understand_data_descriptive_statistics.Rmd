@@ -1,0 +1,196 @@
+---
+title: "Understand Your Data With Descriptive Statistics"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+___________________________________________________________________________________________________________
+
+
+
+You must understand your data in order to get the best results. In this lesson you will discover 7 recipes that you can use in `R` to better understand your machine learning data. After reading this lesson you will know how to:
+
+1. Take a peek at your raw data.
+2. Review the dimensions of your dataset.
+3. Review the data types of attributes in your data.
+4. Summarize the distribution of instances across classes in your dataset.
+5. Summarize your data using descriptive statistics.
+6. Understand the relationships in your data using correlations.
+7. Review the skew of the distributions of each attribute.
+
+Each recipe is demonstrated by loading the [Pima Indians Diabetes classification dataset] from the UCI Machine Learning repository. Open your R and try each recipe out in turn. Let's get started
+
+
+```{r}
+
+# install.packages(c("dbplyr", "RSQLite"))
+suppressMessages(library(tidyverse))
+
+```
+
+## Peek at Your Data
+There is no substitute for looking at the raw data. Looking at the raw data can reveal insights
+that you cannot get any other way. It can also plant seeds that may later grow into ideas on
+how to better pre-process and handle the data for machine learning tasks. You can review the
+first 20 rows of your data using the head() function.
+
+```{r}
+data <- read_csv("./data/pima_indians_diabetes.csv", col_names = FALSE)
+names <- c('preg', 'plas', 'pres', 'skin', 'test', 'mass', 'pedi', 'age', 'class')
+names(data) <- names
+peek <- head(data,20)
+print(peek)
+```
+
+
+
+## Dimensions of Your Data
+
+You must have a very good handle on how much data you have, both in terms of rows and columns.
+
++ Too many rows and algorithms may take too long to train. Too few and perhaps you do not have enough data to train the algorithms.
+
++ Too many features and some algorithms can be distracted or suffer poor performance due to the curse of dimensionality.
+
+You can review the shape and size of your dataset by printing the shape property on the data frame.
+
+```{r}
+dim(data)
+```
+
+
+## Data Type For Each Attribute
+The type of each attribute is important. Strings may need to be converted to 
+oating point
+values or integers to represent categorical or ordinal values. You can get an idea of the types of
+attributes by peeking at the raw data, as above. You can also list the data types used by the
+DataFrame to characterize each attribute using the dtypes property.
+
+```{r}
+sapply(data, class)
+```
+
+## Descriptive Statistics
+
+Descriptive statistics can give you great insight into the shape of each attribute. Often you can
+create more summaries than you have time to review. The describe() function on the Pandas
+DataFrame lists 8 statistical properties of each attribute. They are:
++ Count.
++ Mean.
++ Standard Deviation.
++ Minimum Value.
++ 25th Percentile.
++ 50th Percentile (Median).
++ 75th Percentile.
++ Maximum Value.
+
+```{r}
+summary(data)
+suppressMessages(library(psych))
+describe(data)
+
+```
+
+## Class Distribution (Classification Only)
+On classiffication problems you need to know how balanced the class values are. Highly imbalanced problems (a lot more observations for one class than another) are common and may need special handling in the data preparation stage of your project. You can quickly get an idea of the distribution of the class attribute in `R`.
+
+```{r}
+table(data$class)
+```
+
+## Correlations Between Attributes
+
+Correlation refers to the relationship between two variables and how they may or may not
+change together. The most common method for calculating correlation is Pearson's Correlation
+Coefficient, that assumes a normal distribution of the attributes involved. A correlation of -1
+or 1 shows a full negative or positive correlation respectively. Whereas a value of 0 shows no
+correlation at all. Some machine learning algorithms like linear and logistic regression can suffer
+poor performance if there are highly correlated attributes in your dataset. As such, it is a good
+idea to review all of the pairwise correlations of the attributes in your dataset. You can use the
+corr() function on the `R` data frame to calculate a correlation matrix.
+
+```{r}
+# Computing correlation matrix
+suppressMessages(library(broom))
+M<-cor(data)
+tidy(head(round(M,3)))
+```
+
+
+## Skew of Univariate Distributions
+
+Skew refers to a distribution that is assumed Gaussian (normal or bell curve) that is shifted or
+squashed in one direction or another. Many machine learning algorithms assume a Gaussian
+distribution. Knowing that an attribute has a skew may allow you to perform data preparation
+to correct the skew and later improve the accuracy of your models. You can calculate the skew
+of each attribute using the `skew()` function on the `R` data frame.
+
+```{r}
+suppressMessages(library(moments))
+skewness(data)
+# skew(data, na.rm = TRUE)
+```
+
+
+## Tips To Remember
+
+This section gives you some tips to remember when reviewing your data using summary statistics.
+
++ _Review the numbers_. Generating the summary statistics is not enough. Take a moment
+to pause, read and really think about the numbers you are seeing.
+
++  _Ask why_. Review your numbers and ask a lot of questions. How and why are you seeing
+specific numbers. Think about how the numbers relate to the problem domain in general
+and specific entities that observations relate to.
+
++ _Write down ideas_. Write down your observations and ideas. Keep a small text file or
+note pad and jot down all of the ideas for how variables may relate, for what numbers
+mean, and ideas for techniques to try later. The things you write down now while the
+data is fresh will be very valuable later when you are trying to think up new things to try.
+
+
+## Summary
+
+In this chapter you discovered the importance of describing your dataset before you start work
+on your machine learning project. You discovered different ways to summarize your dataset
+using R.
+
++  Peek At Your Data.
+
++  Dimensions of Your Data.
+
++  Data Types.
+
++  Class Distribution.
+
++  Data Summary.
+
++  Correlations.
+
++  Skewness.
+
+
+## Next
+Another excellent way that you can use to better understand your data is by generating plots
+and charts. In the next lesson you will discover how you can visualize your data for machine
+learning in R.
+
+## Exercises 
+
+Reproduce the previous steps in an `R` script.   
+
+
+
+
+

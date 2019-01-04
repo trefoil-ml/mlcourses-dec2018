@@ -1,0 +1,37 @@
+---
+title: "Data preparation and feature engineering"
+author: "Hicham Zmarrou, PhD"
+date: '`r Sys.Date()`<br /> <br />'
+output:
+  beamer_presentation:
+    colortheme: default
+    fonttheme: default
+    incremental: yes
+    theme: Malmoe
+  ioslides_presentation:
+    incremental: yes
+subtitle: Prepare your data for model training 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Aims of this lesson
+
+* Understand the machine learning process before traininf a ML model 
+
+* Learn about a couple of techniques to select most imnportant features.  
+
+
+
+## Content of this lesson
+
+* Load the data
+* Understand your data using descriptive statistics
+* Understand your data using visualisation techniques
+* Prepare your data for Machine Learning models
+* Feature selection for Machine Learning
+
+__Please go the notebook folder__ 
+

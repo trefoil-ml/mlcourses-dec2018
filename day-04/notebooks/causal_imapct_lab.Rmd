@@ -1,0 +1,161 @@
+---
+title: "Lab: Making Causal Impact Analysis Easy using the `CausalImpact` package"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+___________________________________________________________________________________________________________
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='img/', echo=TRUE, warning=FALSE, message=FALSE,
+                      digits = 3)
+```
+
+
+
+
+##  Causal Impact
+
+### How does it work?
+Given a response time series (e.g., clicks) and a set of control time series (e.g., clicks in non-affected markets or clicks on other sites), the package constructs a Bayesian structural time-series model. This model is then used to try and predict the counterfactual, i.e., how the response metric would have evolved after the intervention if the intervention had never occurred. For details, see: Brodersen et al., Annals of Applied Statistics (2015).
+
+### What assumptions does the model make?
+
+As with all non-experimental approaches to causal inference, valid conclusions require strong assumptions. In the case of CausalImpact, we assume that there is a set control time series that were themselves not affected by the intervention. If they were, we might falsely under- or overestimate the true effect. Or we might falsely conclude that there was an effect even though in reality there wasn't. The model also assumes that the relationship between covariates and treated time series, as established during the pre-period, remains stable throughout the post-period.
+
+### Creating an example dataset
+To illustrate how the package works, we create a simple toy dataset. It consists of a response variable y and a predictor x1. Note that in practice, we'd strive for including many more predictor variables and let the model choose an appropriate subset. The example data has 100 observations. We create an intervention effect by lifting the response variable by 10 units after timepoint 71.
+
+```{r}
+library(CausalImpact)
+```
+
+```{r}
+set.seed(1)
+x1 <- 100 + arima.sim(model = list(ar = 0.999), n = 100)
+y <- 1.2 * x1 + rnorm(100)
+y[71:100] <- y[71:100] + 10
+data <- cbind(y, x1)
+dim(data)
+head(data)
+```
+
+We can visualize the generated data using:
+
+```{r}
+matplot(data, type = "l")
+```
+
+## Running an analysis
+To estimate a causal effect, we begin by specifying which period in the data should be used for training the model (pre-intervention period) and which period for computing a counterfactual prediction (post-intervention period).
+
+
+```{r}
+pre.period <- c(1, 70)
+post.period <- c(71, 100)
+```
+
+To perform inference, we run the analysis using:
+
+```{r}
+impact <- CausalImpact(data, pre.period, post.period)
+
+```
+
+
+Plotting the results
+
+```{r}
+plot(impact)
+```
+
+
+
+By default, the plot contains three panels. The first panel shows the data and a counterfactual prediction for the post-treatment period. The second panel shows the difference between observed data and counterfactual predictions. This is the pointwise causal effect, as estimated by the model. The third panel adds up the pointwise contributions from the second panel, resulting in a plot of the cumulative effect of the intervention.
+
+Remember, once again, that all of the above inferences depend critically on the assumption that the covariates were not themselves affected by the intervention. The model also assumes that the relationship between covariates and treated time series, as established during the pre-period, remains stable throughout the post-period.
+
+### Working with dates and times
+
+It is often more natural to feed a time-series object into CausalImpact() rather than a data frame. For example, we might create a data variable as follows:
+
+```{r}
+time.points <- seq.Date(as.Date("2014-01-01"), by = 1, length.out = 100)
+data <- zoo(cbind(y, x1), time.points)
+head(data)
+```
+
+View the data 
+
+```{r}
+#View(data)
+```
+
+```{r}
+## Period
+pre.period <- as.Date(c("2014-01-01", "2014-03-11"))
+post.period <- as.Date(c("2014-03-12", "2014-04-10"))
+```
+
+### Analysis and Plotting
+
+```{r}
+impact <- CausalImpact(data, pre.period, post.period)
+plot(impact)
+```
+
+
+### Printing a summary table
+```{r}
+summary(impact)
+```
+
+The Average column talks about the average (across time) during the post-intervention period (in the example: time points 71 through 100). The Cumulative column sums up individual time points, which is a useful perspective if the response variable represents a flow quantity (such as queries, clicks, visits, installs, sales, or revenue) rather than a stock quantity (such as number of users or stock price).
+
+In the example, the estimated average causal effect of treatment was 11 (rounded to a whole number; for full precision see impact$summary). This is because we observed an average value of 99 but would have expected an average value of only 89. The 95% posterior interval of the average effect is [9.8, 11]. Since this excludes 0, we (correctly) conclude that the intervention had a causal effect on the response variable. Since we generated the data ourselves, we know that we injected a true effect of 10, and so the model accurately recovered ground truth. One reason for this is that we ensured, by design, that the covariate x1 was not itself affected by the intervention. In practice, we must always reason whether this assumption is justified.
+
+For additional guidance about the correct interpretation of the summary table, the package provides a verbal interpretation, which we can print using:
+
+```{r}
+summary(impact, "report")
+```
+
+The individual numbers in the table, at full precision, can be accessed using:
+
+
+```{r}
+impact$summary
+```
+
+## Adjusting the model
+So far, we've simply let the package decide how to construct a time-series model for the available data. However, there are several options that allow us to gain a little more control over this process. These options are passed into model.args as individual list elements, for example:
+
+
+`impact <- CausalImpact(., model.args = list(niter = 5000, nseasons = 7))`
+
+
+###  Available options
+
+* _niter_: Number of MCMC samples to draw. More samples lead to more accurate inferences. Defaults to 1000.
+
+* _standardize.data_ Whether to standardize all columns of the data before fitting the model. This is equivalent to an empirical Bayes approach to setting the priors. It ensures that results are invariant to linear transformations of the data. Defaults to TRUE.
+
+* _prior.level.sd_ Prior standard deviation of the Gaussian random walk of the local level. Expressed in terms of data standard deviations. Defaults to 0.01, a typical choice for well-behaved and stable datasets with low residual volatility after regressing out known predictors (e.g., web searches or sales in high quantities). When in doubt, a safer option is to use 0.1, as validated on synthetic data, although this may sometimes give rise to unrealistically wide prediction intervals.
+
+* _nseasons_ Period of the seasonal components. In order to include a seasonal component, set this to a whole number greater than 1. For example, if the data represent daily observations, use 7 for a day-of-week component. This interface currently only supports up to one seasonal component. To specify multiple seasonal components, use bsts to specify the model directly, then pass the fitted model in as bsts.model. Defaults to 1, which means no seasonal component is used.
+
+* _season.duration_ Duration of each season, i.e., number of data points each season spans. Defaults to 1. For example, to add a day-of-week component to data with daily granularity, use model.args = list(nseasons = 7, season.duration = 1). To add a day-of-week component to data with hourly granularity, set model.args = list(nseasons = 7, season.duration = 24).
+
+* _dynamic.regression_ Whether to include time-varying regression coefficients. In combination with a time-varying local trend or even a time-varying local level, this often leads to overspecification, in which case a static regression is safer. Defaults to FALSE.

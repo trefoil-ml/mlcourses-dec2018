@@ -1,0 +1,167 @@
+---
+title: "Tuning a Random Forest via mtry"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+
+## Tuning a Random Forest via mtry
+
+
+In this exercise, you will use the `randomForest::tuneRF()` to tune `mtry` (by training several models). This function is a specific utility to tune the `mtry` parameter based on OOB error, which is helpful when you want a quick & easy way to tune your model. A more generic way of tuning Random Forest parameters will be presented in the following exercise.
+
+
+* Use the tuneRF() function in place of the randomForest() function to train a series of models with different mtry values and examine the the results.
+  * Note that (unfortunately) the tuneRF() interface does not support the typical formula input that we've been using, but instead uses two arguments, x (matrix or data frame of predictor variables) and y (response vector; must be a factor for classification).
+
+* The tuneRF() function has an argument, ntreeTry that defaults to 50 trees. Set nTreeTry = 500 to train a random forest model of the same size as you previously did.
+
+* After tuning the forest, this function will also plot model performance (OOB error) as a function of the mtry values that were evaluated.
+  * Keep in mind that if we want to evaluate the model based on AUC instead of error (accuracy), then this is not the best way to tune a model, as the selection only considers (OOB) error.
+
+
+``` 
+
+library(tidyverse)
+library(randomForest)
+# Execute the tuning process
+set.seed(1)              
+res <- tuneRF(x = subset(credit_train, select = -default),
+              y = ___,
+              ntreeTry = ___)
+               
+# Look at results
+print(res)
+
+# Find the mtry value that minimizes OOB Error
+mtry_opt <- res[,"mtry"][which.min(res[,"OOBError"])]
+print(mtry_opt)
+
+# If you just want to return the best RF model (rather than results)
+# you can set `doBest = TRUE` in `tuneRF()` to return the best RF model
+# instead of a set performance matrix.
+
+``` 
+
+
+## Tuning a Random Forest via tree depth
+
+In this exercise, you will create a grid of `mtry`, `nodesize` and `sampsize` values. In this example, we will identify the "best model" based on OOB error. The best model is defined as the model from our grid which minimizes OOB error.
+
+Keep in mind that there are other ways to select a best model from a grid, such as choosing the best model based on validation AUC. However, for this exercise, we will use the built-in OOB error calculations instead of using a separate validation set.
+
+
+* Create a grid of mtry, nodesize and sampsize values.
+
+* Write a simple loop to train all the models and choose the best one based on OOB error.
+
+* Print the set of hyperparameters which produced the best model.
+
+```
+# Establish a list of possible values for mtry, nodesize and sampsize
+mtry <- seq(1, ncol(credit_train)-1, 1)
+nodesize <- seq(3, 8, 2)
+sampsize <- nrow(credit_train) * c(0.7, 0.8)
+
+# Create a data frame containing all combinations 
+hyper_grid <- expand.grid(mtry = ___, nodesize = ___, sampsize = ___)
+
+# Create an empty vector to store OOB error values
+oob_err <- c()
+
+# Write a loop over the rows of hyper_grid to train the grid of models
+for (i in 1:nrow(___)) {
+
+    # Train a Random Forest model
+    model <- randomForest(formula = default ~ ., 
+                          data = ___,
+                          mtry = hyper_grid$mtry[i],
+                          nodesize = hyper_grid$___,
+                          sampsize = hyper_grid$___)
+                          
+    # Store OOB error for the model                      
+    oob_err[i] <- model$err.rate[nrow(model$err.rate), "OOB"]
+}
+
+# Identify optimal set of hyperparmeters based on OOB error
+opt_i <- which.min(oob_err)
+print(hyper_grid[opt_i,])
+
+```
+
+
+
+
+
+
+
+
+## Solutions
+### Tuning a Random Forest via mtry
+
+```{r eval=FALSE, include=FALSE}
+# Execute le tuning process
+set.seed(1)              
+res <- tuneRF(x = subset(credit_train, select = -default),
+              y =credit_train$default,
+              ntreeTry = 500) # Nombre max de arbres
+
+# Look at results
+print(res)
+
+# Find  mtry that minimise the OOB error
+mtry_opt <- res[,"mtry"][which.min(res[,"OOBError"])]
+print(mtry_opt)
+```
+
+
+
+### Tuning a Random Forest via tree depth
+
+```{r}
+# Establish a list of possible values for mtry, nodesize and sampsize
+
+mtry <- seq(4, ncol(credit_train) * 0.8, 2) # nombre max de variable à choisir aléatoirement
+nodesize <- seq(3, 8, 2) # Nombre de noeud max
+sampsize <- nrow(credit_train) * c(0.7, 0.8) # taille du train
+
+# Create a data frame containing all combinations
+hyper_grid <- expand.grid(mtry = mtry, nodesize = nodesize, sampsize = sampsize)
+
+#  Create an empty vector to store OOB error values
+oob_err <- c()
+
+# Write a loop over the rows of hyper_grid to train the grid of models
+
+for (i in 1:nrow(hyper_grid)) {
+
+    # Train  Random Forest 
+    model <- randomForest(formula = default ~ ., 
+                          data = credit_train,
+                          mtry = hyper_grid$mtry[i],
+                          nodesize = hyper_grid$nodesize[i],
+                          sampsize = hyper_grid$sampsize[i])
+                          
+    # OOB error of the model                      
+    oob_err[i] <- model$err.rate[nrow(model$err.rate), "OOB"]
+}
+
+# Identify optimal set of hyperparmeters based on OOB error
+opt_i <- which.min(oob_err)
+print(hyper_grid[opt_i,])  
+
+```
+
+

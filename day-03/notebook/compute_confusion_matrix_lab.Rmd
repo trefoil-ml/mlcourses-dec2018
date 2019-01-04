@@ -1,0 +1,65 @@
+---
+title: "Evaluate model Performance"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+## Compute confusion matrix
+As discussed in the previous video, there are a number of different metrics by which you can measure the performance of a classification model. In this exercise, we will evaluate the performance of the model using test set classification error. A confusion matrix is a convenient way to examine the per-class error rates for all classes at once.
+
+The `confusionMatrix()` function from the caret package prints both the confusion matrix and a number of other useful classification metrics such as "Accuracy" (fraction of correctly classified instances).
+
+The caret package has been loaded for you. 
+
+* load the dataset named `Default` from the library `ISLR`
+* make a training and test set train_df and test_df 
+* fit a tree to the `train_df` and callet it `credit_model` 
+* Generate class predictions for the test_df data frame using the credit_model object.
+* Using the caret::confusionMatrix() function, compute the confusion matrix for the test set.
+
+
+```
+# Generate predicted classes using the model object
+library(caret)
+library(ISLR)
+attach(Default)
+
+
+smp_size <- ---(0.75 * nrow(Default))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+
+train_ind <- sample(seq_len(nrow(Default)), size = smp_size)
+
+# make a training and test set
+train_df <- Default[---, ]
+test_df <-  Default[---, ]
+
+# train a tree to the training dataset 
+
+credit_model <- rpart(default ~  ---, data = ---)
+
+## make a prediction on the test data 
+
+class_prediction <- ---(object = ---,  
+                        newdata = ---,   
+                        type = "class")  
+                            
+# Calculate the confusion matrix for the test set
+ confusionMatrix(data = ---,       
+                reference = ---)  
+```
+

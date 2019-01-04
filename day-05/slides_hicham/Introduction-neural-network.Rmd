@@ -1,0 +1,247 @@
+---
+title: "Introduction neural networks  in R"
+author: "Hicham Zmarrou, PhD"
+date: '`r Sys.Date()`<br /> <br />'
+output:
+  beamer_presentation:
+    colortheme: default
+    fonttheme: default
+    incremental: yes
+    theme: Malmoe
+  ioslides_presentation:
+    incremental: yes
+  slidy_presentation:
+    incremental: yes
+subtitle: ""
+---
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=9, fig.height=6, fig.path='img/', digits = 3,  echo=TRUE, results=TRUE, warning=FALSE, comment="", message=FALSE)
+```
+
+## Aims of this lesson 
+
+Give you a general introduction to neural networks, How they works and how to implement them in R.
+
+## What are Neural networks
+```
+https://www.youtube.com/watch?v=bxe2T-V8XRs
+
+https://www.youtube.com/watch?v=UJwK6jAStmg
+
+https://www.youtube.com/watch?v=5u0jaA3qAGk&t=45s
+
+https://www.youtube.com/watch?v=GlcnxUlrtek
+
+https://www.youtube.com/watch?v=pHMzNW8Agq4
+
+https://www.youtube.com/watch?v=9KM9Td6RVgQ
+
+https://www.youtube.com/watch?v=S4ZUwgesjS8
+
+```
+
+
+## Neural network from scratch
+
+```{r, echo=FALSE}
+library(ggplot2)
+moons <- read.csv("./data/moonsXY.csv")
+#moons[,1] <- NULL 
+(sp<-ggplot(moons, aes(x=xcoord, y=ycoord, color=as.factor(label))) + geom_point())
+
+```
+
+## Neural network from scratch
+
++ The dataset we generated has two classes, plotted as red and blue points. 
+
++ You can think of the blue dots as male patients and the red dots as female patients, with the x- and y- axis being medical measurements.
+
++ Our goal is to train a Machine Learning classifier that predicts the correct class (male of female) given the x- and y- coordinates.
+
++ Data is not linearly separable, we can't draw a straight line that separates the two classes. 
+
++ This means that linear classifiers, such as Logistic Regression, won't be able to fit the data unless you hand-engineer non-linear features (such as polynomials) that work well for the given dataset.
+
+
++ That's one of the major advantages of Neural Networks. You don't need to worry about feature engineering. The hidden layer of a neural network will learn features for you.
+
+
+## Fitting the logistic regression 
+
+```{r, echo=FALSE}
+source("myplot.R")
+model <- glm(label~., data = moons, family=binomial(link='logit'))
+class(model) <- c("lr", class(model))
+predict.lr <- function(object, newdata, ...)
+  predict.glm(object, newdata, type = "response") > .5
+
+# myplot(model, moons, class = "label", main = "Logistic Regression")
+
+```
+
+```{r}
+myplot(model, moons, class = "label", 
+       main = "Logistic Regression")
+```
+
+## Training a neural network 
+
+*  Build a 3-layer neural network with one input layer,
+
+    + one input layer, one hidden layer, and one output layer. 
+    
+    + the number of nodes in the input layer is determined by the dimensionality of our data, 2. 
+    
+    + the number of nodes in the output layer is determined by the number of classes we have, also 2.
+    
+    + the input to the network will be xcoord- and ycoord and its output will be two probabilities, one for class red ("female") and one for class blue ("male"). It looks something like this:
+
+## Training a neural network 
+
+![NN illustration](img_slides/nn-from-scratch-3-layer-network.png){width=70%}
+    
+
+## How does the algorithm work?    
+
+Go to this nice [blog](http://tamaszilagyi.com/blog/2017/2017-11-11-animated_net/)
+
+
+## Implementation in R 
+
+
+```{r}
+## A network with a hidden layer of size 3
+x <-  moons[1:150, c("xcoord", "ycoord", "label")]
+x$label <- as.factor(x$label)
+levels(x$label) <- c("m","f") 
+head(x)
+library(nnet)
+model <- nnet(label ~ ., data=x, size =3, maxit = 1000, trace = FALSE)
+
+```
+
+## A network with a hidden layer of size 3
+```{r}
+myplot(model, x, class = "label", main = "NN (3)")
+```
+
+
+
+## Circle dataset
+
+```{r}
+set.seed(1000)
+library(mlbench)
+x <- mlbench.circle(100)
+x <- cbind(as.data.frame(x$x), factor(x$classes))
+colnames(x) <- c("x", "y", "class")
+
+head(x,3)
+```
+
+
+
+## Circle dataset (Logistic Regression)
+
+Logistic Regression
+Only considers for 2 classes
+
+```{r}
+model <- glm(class ~., data = x, family=binomial(link='logit'))
+class(model) <- c("lr", class(model))
+predict.lr <- function(object, newdata, ...)
+  predict.glm(object, newdata, type = "response") > .5
+```
+
+## Circle dataset (Logistic Regression)
+
+```{r}
+myplot(model, x, class = "class", main = "Logistic Regression")
+```
+
+## Circle dataset (Decision trees)
+
+```{r}
+
+library("rpart")
+model <- rpart(class ~ ., data=x)
+myplot(model, x, class = "class", main = "CART")
+```
+
+
+## Circle dataset (Decision trees overfitting)
+
+```{r}
+model <- rpart(class ~ ., data=x,
+  control = rpart.control(cp = 0.001, minsplit = 1))
+myplot(model, x, class = "class", main = "CART (overfitting)")
+
+```
+
+## Circle dataset (Decision trees C5.0)
+
+```{r}
+library(C50)
+model <- C5.0(class ~ ., data=x)
+myplot(model, x, class = "class", main = "C5.0")
+```
+
+
+## Circle dataset (Random Forest)
+
+```{r}
+library(randomForest)
+model <- randomForest(class ~ ., data=x)
+myplot(model, x, class = "class", main = "Random Forest")
+```
+
+
+## Circle dataset (Neural Network)
+
+```{r}
+library(nnet)
+model <- nnet(class ~ ., data=x, size = 1, maxit = 1000, trace = FALSE)
+myplot(model, x, class = "class", main = "NN (1)")
+
+```
+
+
+## Circle dataset (Neural Network)
+
+```{r}
+library(nnet)
+model <- nnet(class ~ ., data=x, size = 2, maxit = 1000, trace = FALSE)
+myplot(model, x, class = "class", main = "NN (2)")
+
+```
+
+
+## Circle dataset (Neural Network)
+
+
+```{r}
+library(nnet)
+model <- nnet(class ~ ., data=x, size = 4, maxit = 1000, trace = FALSE)
+myplot(model, x, class = "class", main = "NN (4)")
+
+```
+
+## Circle dataset (Neural Network)
+
+```{r}
+library(nnet)
+model <- nnet(class ~ ., data=x, size = 10, maxit = 1000, trace = FALSE)
+myplot(model, x, class = "class", main = "NN (10)")
+
+```
+
+
+
+
+## Neural Networks: Playground Exercises
+
+
+

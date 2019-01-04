@@ -1,0 +1,170 @@
+---
+title: "Understand Your Data With Visualization"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+___________________________________________________________________________________________________________
+
+
+
+
+You must understand your data in order to get the best results from machine learning algorithms. The fastest way to learn more about your data is to use data visualization. In this chapter you will discover exactly how you can visualize your machine learning data in `R`. Recipes in this lesson use the Pima Indians onset of diabetes dataset introduced in the previous chapters.
+
+Let's get started.
+
+## Univariate Plots
+
+In this section we will look at three techniques that you can use to understand each attribute of
+your dataset independently.
+
++  Histograms.
+
++ Density Plots.
+
++ Box and Whisker Plots.
+
+### Histograms
+
+A fast way to get an idea of the distribution of each attribute is to look at histograms. Histograms
+group data into bins and provide you a count of the number of observations in each bin. From
+the shape of the bins you can quickly get a feeling for whether an attribute is Gaussian, skewed
+or even has an exponential distribution. It can also help you see possible outliers.
+
+```{r}
+#library(psych)
+# multi.hist(data[, -9])
+suppressMessages(library(tidyverse))
+suppressMessages(library(corrplot))
+suppressMessages(library(broom))
+```
+
+Laod the data and plot the historgram
+
+```{r}
+data <- read_csv("./data/pima_indians_diabetes.csv", col_names = FALSE)
+names <- c('preg', 'plas', 'pres', 'skin', 'test', 'mass', 'pedi', 'age', 'target')
+names(data) <- names
+data$target<- as.factor(data$target)
+
+data %>%
+  keep(is.numeric) %>% 
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+
+```
+
+
+### Density Plots
+Density plots are another way of getting a quick idea of the distribution of each attribute. The
+plots look like an abstracted histogram with a smooth curve drawn through the top of each bin,
+much like your eye tried to do with the histograms.
+
+```{r}
+
+data[, -9] %>%
+  keep(is.numeric) %>%                     # Keep only numeric columns
+  gather() %>%                             # Convert to key-value pairs
+  ggplot(aes(value)) +                     # Plot the values
+    facet_wrap(~ key, scales = "free") +   # In separate panels
+    geom_density()   
+```
+
+### Box and Whisker Plots
+
+Another useful way to review the distribution of each attribute is to use Box and Whisker Plots or boxplots for short. Boxplots summarize the distribution of each attribute, drawing a line for the median (middle value) and a box around the 25th and 75th percentiles (the middle 50% of the data). The whiskers give an idea of the spread of the data and dots outside of the whiskers
+show candidate outlier values (values that are 1.5 times greater than the size of spread of the middle 50% of the data).
+
+We can see that the spread of attributes is quite different. Some like age, test and skin appear quite skewed towards smaller values.
+
+```{r}
+boxplot(data[,-9])
+```
+
+
+
+
+## Multivariate Plots
+
+This section provides examples of two plots that show the interactions between multiple variables
+in your dataset.
+
++ Correlation Matrix Plot.
+
++ Scatter Plot Matrix.
+
+## Correlation Matrix Plot
+
+Correlation gives an indication of how related the changes are between two variables. If two variables change in the same direction they are positively correlated. If they change in opposite directions together (one goes up, one goes down), then they are negatively correlated. You can calculate the correlation between each pair of attributes. This is called a correlation matrix. You can then plot the correlation matrix and get an idea of which variables have a high correlation with each other. This is useful to know, because some machine learning algorithms like linear and logistic regression can have poor performance if there are highly correlated input variables in your data. 
+
+```{r}
+M <- cor(data[,-9])
+tidy(head(round(M,3)))
+corrplot(M, method="color")
+```
+
+### Scatter Plot Matrix
+
+A scatter plot shows the relationship between two variables as dots in two dimensions, one
+axis for each attribute. You can create a scatter plot for each pair of attributes in your data.
+Drawing all these scatter plots together is called a scatter plot matrix. Scatter plots are useful
+for spotting structured relationships between variables, like whether you could summarize the
+relationship between two variables with a line. Attributes with structured relationships may
+also be correlated and good candidates for removal from your dataset.
+Like the Correlation Matrix Plot above, the scatter plot matrix is symmetrical. This is
+useful to look at the pairwise relationships from diffirent perspectives. Because there is little
+point of drawing a scatter plot of each variable with itself, the diagonal shows histograms of
+each attribute.
+
+```{r}
+suppressMessages(library(GGally))
+p <- ggpairs(data[, -9])
+print(p)
+```
+
+
+
+## Summary
+
+In this chapter you discovered a number of ways that you can better understand your machine
+learning data in R. Speciffically, you learned how to plot your data using:
++  Histograms.
+
++  Density Plots.
+
++  Box and Whisker Plots.
+
++  Correlation Matrix Plot.
+
++  Scatter Plot Matrix.
+
+
+## Next
+
+
+Now that you know two ways to learn more about your data, you are ready to start manipulating
+it. In the next lesson you will discover how you can prepare your data to best expose the structure of your problem to modeling algorithms.
+
+## Exercises 
+
+1. Install all packages we used in this section 
+2. Read the `Pima Indians onset of diabetes` dataset from the folder named `data`
+3. Plot and inspect the historgrams and the densities of the individual numeric features of the dataset
+4. Plot a boxplot of the individual features 
+5. Plot the Correlation Matrix of the numeric data. 
+
+
+ 

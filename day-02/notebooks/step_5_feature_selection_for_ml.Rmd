@@ -1,0 +1,340 @@
+---
+title: "Feature Selection For Machine Learning"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+```{r}
+options(tz="Europe/Berlin")
+suppressMessages(library(tidyverse))
+
+```
+___________________________________________________________________________________________________________
+
+The data features that you use to train your machine learning models have a huge influence on the performance you can achieve. Irrelevant or partially relevant features can negatively impact model performance. In this chapter you will discover automatic feature selection techniques
+that you can use to prepare your machine learning data in `R`. After completing this lesson you will know how to use:
+
+1. Univariate Selection.
+
+2. Recursive Feature Elimination.
+
+3. Principle Component Analysis.
+
+4. Feature Importance.
+
+Let's get started.
+
+## Feature Selection
+
+Feature selection is a process where you automatically select those features in your data that
+contribute most to the prediction feature or __Label__ in which you are interested. Having
+irrelevant features in your data can decrease the accuracy of many models, especially linear
+algorithms like linear and logistic regression. Three benefits of performing feature selection
+before modeling your data are:
+
+
++  Reduces Overfitting: Less redundant data means less opportunity to make decisions based on noise.
+
++  Improves Accuracy: Less misleading data means modeling accuracy improves.
+
++  Reduces Training Time: Less data means that algorithms train faster. 
+
+
+Each feature selection recipes will use the Pima Indians onset of diabetes dataset.
+
+### Univariate Selection
+
+Statistical tests can be used to select those features that have the strongest relationship with the output feature, the __Label__. As an example, it has been suggested for classification models, that features can be filtered by conducting some sort of k-sample test (where k is the number of classes) to see if the mean of the feature is different between the classes. Wilcoxon tests, t-tests and ANOVA models are sometimes used. Features that have statistically significant differences between the classes are then used for modeling.
+
+The `caret` function `sbf` (for selection by filter) can be used to cross-validate such feature selection schemes. Functions can be passed into sbf for the computational components: univariate filtering, model fitting, prediction and performance summaries (details are given below).
+
+The function is applied to the entire training set and also to different resampled versions of the data set. From this, generalizable estimates of performance can be computed that properly take into account the feature selection step. Also, the results of the feature filters can be tracked over resamples to understand the uncertainty in the filtering.
+
+```{r}
+set.seed(7)
+# load the library
+suppressMessages(library(mlbench))
+suppressMessages(library(caret))
+# load the data
+data  <- read_csv("./data/pima_indians_diabetes.csv", col_names = FALSE)
+names <- c('preg', 'plas', 'pres', 'skin', 'test', 'mass', 'pedi', 'age', 'class')
+names(data) <- names
+data$class <- factor(data$class)
+data       <- as.data.frame(data)
+
+filterCtrl <- sbfControl(functions = rfSBF, method = "repeatedcv", repeats = 5)
+set.seed(10)
+rfWithFilter <- sbf(data[,1:8], data[,9], sbfControl = filterCtrl)
+print(rfWithFilter)
+
+```
+
+
+In this case, the training set indicated that 7 should be used in the Random Forest model, but the resampling results indicate that there is some variation (5) in this number. Some of the informative features are used, but a few others are erroneous retained.
+
+### [Recursive Feature Elimination](http://topepo.github.io/caret/recursive-feature-elimination.html#backwards-selection)
+
+The Recursive Feature Elimination (or RFE) is a popular algorithm and works by recursively removing attributes and building a model on those attributes that remain. It uses the model accuracy to identify which features (and combination of attributes) contribute the most to predicting the target _Label_
+
+The example below provides an example of the RFE method on the Pima Indians Diabetes dataset. A Random Forest algorithm is used on each iteration to evaluate the model. The algorithm is configured to explore all possible subsets of the attributes. All 8 attributes are selected in this example, although in the plot showing the accuracy of the different attribute subset sizes, we can see that just 4 attributes gives almost comparable results.
+
+```{r}
+
+# define the control using a random forest selection function
+control <- rfeControl(functions=rfFuncs, method="cv", number= 5)
+# run the RFE algorithm
+results <- rfe(data[,1:8], data[,9], sizes=c(1:8), rfeControl=control)
+```
+
+
+
+```{r}
+# summarize the results
+print(results)
+
+```
+
+The output shows that the best subset size was estimated to all predictors. This set includes informative variables but did not include them all. The `predictors` function can be used to get a text string of variable names that were picked in the final model. The lmProfile is a list of class "rfe" that contains an object fit that is the final linear model with the remaining terms. The model can be used to get predictions for future or test samples.
+
+
+```{r}
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+```
+
+
+We test the algorithm on an other artificial example 
+There are five informative variables generated by the equation
+
+$$
+y = 10\sin(\pi x_1 x_2) + 20 (x_3-0.5)^2 +10x_4 + 5x_5+N(0,\sigma^2) 
+$$
+
+```{r}
+library(mlbench)
+library(Hmisc)
+library(randomForest)
+n <- 100
+p <- 40
+sigma <- 1
+set.seed(1)
+sim <- mlbench.friedman1(n, sd = sigma)
+
+colnames(sim$x) <- c(paste("real", 1:5, sep = ""),
+                     paste("bogus", 1:5, sep = ""))
+bogus <- matrix(rnorm(n * p), nrow = n)
+colnames(bogus) <- paste("bogus", 5+(1:ncol(bogus)), sep = "")
+x <- cbind(sim$x, bogus)
+y <- sim$y
+
+```
+
+Of the 50 predictors, there are 45 pure noise variables: 5 are uniform on [0,1] and 40 are random univariate standard normals. The predictors are centered and scaled
+
+```{r}
+normalization <- preProcess(x)
+x <- predict(normalization, x)
+x <- as.data.frame(x)
+subsets <- c(1:5, 10, 15, 20, 25)
+```
+
+
+The simulation will fit models with subset sizes of 25, 20, 15, 10, 5, 4, 3, 2, 1.
+
+As previously mentioned, to fit linear models, the  lmFuncs  set of functions can be used. To do this, a control object is created with the  rfeControl  function. We also specify that repeated 10-fold cross-validation should be used in line 2.1 of Algorithm 2. The number of folds can be changed via the  number  argument to  rfeControl  (defaults to 10). The  verbose  option prevents copious amounts of output from being produced.
+
+```{r}
+
+set.seed(10)
+
+ctrl <- rfeControl(functions = lmFuncs,
+                   method = "repeatedcv",
+                   repeats = 5,
+                   verbose = FALSE)
+
+lmProfile <- rfe(x, y,
+                 sizes = subsets,
+                 rfeControl = ctrl)
+
+lmProfile
+```
+ 
+ 
+```{r}
+predictors(lmProfile)
+```
+
+
+```{r}
+trellis.par.set(caretTheme())
+plot(lmProfile, type = c("g", "o"))
+
+```
+### Principal Component Analysis
+
+
+Principal Component Analysis (or PCA) uses linear algebra to transform the dataset into a compressed form. Generally this is called a data reduction technique. A property of PCA is that you can choose the number of dimensions or principal components in the transformed result. In the example below, we use PCA and select 3 principal components. Install the two packages as follow:
+
+```{r eval=FALSE, include=FALSE}
+install.packages(c("FactoMineR", "factoextra"))
+```
+
+
+Load them in R, by typing this:
+
+```{r}
+suppressMessages(library("FactoMineR"))
+suppressMessages(library("factoextra"))
+respca <- PCA(data[, -9], graph = FALSE)
+fviz_eig(respca, addlabels = TRUE, ylim = c(0, 30))
+```
+
+
+The function `PCA` [FactoMineR package] can be used. A simplified format is :
+
+```
+PCA(X, scale.unit = TRUE, ncp = 5, graph = TRUE)
+```
+
++ X: a data frame. Rows are individuals and columns are numeric features
+
++ scale.unit: a logical value. If TRUE, the data are scaled to unit variance before the analysis. This standardization to the same scale avoids some features to become dominant just because of their large measurement units. It makes feature comparable.
+
++ ncp: number of dimensions kept in the final results.
++ graph: a logical value. If TRUE a graph is displayed.
+
+### Variable Importance
+
+To evaluate the variable importance (VI) we will use the "Random Uniform Forests", which has a wide selection of instruments for its deep analysis and visualization. As per intent of the package's developers, the main objective of determining the importance of features is to assess which, when, where and how they affect the problem being solved.
+
+The package provides various importance measures of a feature in depth. We will consider them prior to going into deeper evaluation. 
+
++ The _Global Variable Importance_ sets variables that reduce the prediction error the utmost, but it doesn't tell us how the important feature affects the _Label_.
+
+For example, we would like to know, which features have a stronger influence over the separate class, or what is the interaction between features. The feature importance is measured by all units and trees, and that allows all features to have a value, as the cutting points are accidental. ???Therefore, each feature has equal chances of being selected, but it will be getting the importance, only if it will be the one which mostly reduces the entropy in each node.
+
++ _Local Variable Importance_ : a feature is locally important in the first order, if for the same observation and all the trees it is the one with a highest frequency of occurrence in a terminal node.
+
++ _Partial importance_: partial importance is the way to assess the importance of a feature when the label Y is fixed (or for realizations of Y above or below a threshold in the case of regression). A feature is partially important, if for the same observation and one class and at all orders it is the one that has the highest frequency of occurrence at the terminal node.
+
++ _Interactions_: we want to know, how features influence the problem, when we consider them. For example, some features can have a relative low impact on the problem, but a strong impact on more relevant features, or a feature can have a lot of interaction with others, which makes this feature influential. Let's define what interaction is. A feature interacts with another, if on the same observation and for all the trees both have, respectively, first and second highest frequency of occurrence in the terminal node.
+
++ _Partial dependencies_ : these are the tools that allow to determine, how a feature (or a pair of features) affects the value of response, knowing the values of all other features. 
+
+In accordance with the ideas of the Random Uniform Forests package we can determine the importance of a feature based on the following scheme: _Importance = contribution + interaction_, where _contribution_ is the influence of a feature (in respect to influencing all) on prediction errors, and _interaction_ is an impact on other features.
+
+Let's proceed to experiments
+
+We will divide our data set `data` into the training and testing sets with ratio 2/3, normalize in the range of $[-1,1]$$ and test the model. For separation we will use the `rminer::holdout()` function which will divide the set in two. For normalization we use the `caret::preProcess()` function and the `method = c("spatialSign")`. When training the model the package will automatically parallelize calculations between available processor cores minus one using the `"doParallel"` package. You can indicate a specific number of cores to be used for calculation with the "threads" option.
+
+
+```{r}
+suppressMessages(library(randomUniformForest))
+idx <- rminer::holdout(y = data$class)
+prep <- caret::preProcess(x = data[idx$tr, -ncol(data)],method = c("spatialSign"))
+
+ x.train <- predict(prep, data[idx$tr, -ncol(data)])
+ x.test <- predict(prep, data[idx$ts, -ncol(data)])
+ y.train <- data[idx$tr, ncol(data)]
+ y.test <- data[idx$ts, ncol(data)]
+ ruf <- randomUniformForest( X = x.train, 
+                              Y = y.train,
+                              xtest = x.test, 
+                              ytest = y.test,
+                              #mtry = 1, 
+                              ntree = 300,
+                              threads = 2, 
+                              nodesize = 2
+                              )
+```
+
+print out the results 
+
+
+
+
+```{r}
+print(ruf)
+plot(ruf)
+```
+
+```{r}
+print(ruf)
+
+```
+
+
+```{r}
+plot(ruf)
+```
+
+Now we are looking at the global importance of features.
+
+```{r}
+summary(ruf)
+```
+
+We see that all our input features are significant and important. It is indicated, in which classes the features appear most frequently.
+
+And some more statistics:
+
+```{r}
+
+pr.ruf <- predict(ruf, x.test, type = "response");
+ms.ruf <- model.stats(pr.ruf, y.test)
+
+pr.ruf
+ms.ruf
+```
+
+If we stop right here, which is normally offered by many packages, we would have to select several features with the best indicators of global importance. This choice does not provide good results as it does not take into account the mutual influence of the features.
+
+Local importance
+
+```{r}
+imp.ruf <- importance(ruf, Xtest = x.test, maxInteractions = 3)
+
+```
+
+From what we see, the importance of features on the basis of interaction with others highlights the top 10 that don't match the order of global importance. And finally, the importance of features by classes taking into account their contribution and involvement. Please note that the feature `age`, which on the basis of global importance was at the `fifth` place and, in theory, should have been abandoned, has actually risen to the sixth place due to the strong interaction.
+
+Thus, top 5 features:
+
+```{r}
+best <- c("mass", "plas", "age", "skin", "preg")
+```
+
+
+```{r}
+ x.tr <- x.train[ ,best]
+ x.tst <- x.test[ ,best]
+ ruf.opt <- randomUniformForest(X = x.tr,
+                                Y = y.train,
+                                xtest = x.tst, 
+                                ytest = y.test,
+                                ntree = 300, 
+                                mtry = "random",
+                                nodesize = 1,
+                                threads = 2)
+```
+
+print out the results 
+
+```{r}
+ruf.opt
+
+```

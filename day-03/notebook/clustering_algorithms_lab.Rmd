@@ -1,0 +1,227 @@
+---
+title: "Clustering algorithms"
+subtitle: "Exercises and solutions"
+venue: ""
+author: "Hicham Zmarrou"
+date: "Notebook -- <http://bit.ly/2q9NPSU>  <br /> <br />"
+output:
+  html_notebook:
+    highlight: pygments
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: FALSE
+---
+
+
+<hr>
+
+[Visit my website](http://trefoil.ml/) for more like this!
+
+__References__
+
+Most of this material is borrowed from:
+
+* Textbook: [Practical Guide to Cluster Analysis in R](http://www.sthda.com)
+
+______________________________________________________________________________________________________________________________________
+
+  
+## K-means
+
+We'll use the built-in R dataset`USArrest` which contains statistics, in arrests per 100,000 residents for assault, murder, and rape in each of the 50 US states in 1973. It includes also the percent of the population living in urban areas.
+
+It contains 50 observations on 4 variables:
+
+* [,1] Murder numeric Murder arrests (per 100,000)
+* [,2] Assault numeric Assault arrests (per 100,000)
+* [,3] UrbanPop numeric Percent urban population
+* [,4] Rape numeric Rape arrests (per 100,000)
+
+1. Load the `USArrests` data set, remove any missing value (i.e, NA values for not available) that might be present in the dat, View the firt 6 
+
+```{r}
+# Load the data set
+data("USArrests")
+# Remove any missing value (i.e, NA values for not available)
+# That might be present in the data
+df <- na.omit(USArrests)
+# View the firt 6 rows of the data
+head(df, n = 6)
+
+```
+
+
+
+2. Before k-means clustering, compute `min`, `median`, `mean`, `sd` and `max` over all the states.
+
+Note that the variables have a large different means and variances. This is explained by the fact that the variables are measured in different units; `Murder`, `Rape`, and `Assault` are measured as the number of occurrences per 100 000 people, and `UrbanPop` is the percentage of the state's population that lives in an urban area.
+
+They must be standardized (i.e., scaled) to make them comparable. Recall that, standardization consists of transforming the variables such that they have mean zero and standard deviation one. You may want read more about standardization in the following article: [distance measures and scaling](http://bit.ly/1i7vgdY).
+
+```{r}
+desc_stats <- data.frame(
+  Min = apply(df, 2, min), # minimum
+  Med = apply(df, 2, median), # median
+  Mean = apply(df, 2, mean), # mean
+  SD = apply(df, 2, sd), # Standard deviation
+  Max = apply(df, 2, max) # Maximum
+  )
+desc_stats <- round(desc_stats, 1)
+head(desc_stats)
+
+```
+
+
+3. As we don't want the `k-means`  algorithm to depend to an arbitrary variable unit, start by scaling the data using the `R` function `scale()`
+
+```{r}
+df <- scale(df)
+head(df)
+```
+
+
+4. Use the `fviz_nbclust()` in `factoextra` package to extract the optimal number of clusters   
+
+
+```{r}
+library(factoextra)
+set.seed(123)
+fviz_nbclust(df, kmeans, method = "wss") +
+    geom_vline(xintercept = 4, linetype = 2) + 
+    labs(subtitle = "Elbow method")
+
+```
+
+
+5. compute the k-means clustering with the suggested number of clusters
+
+```{r}
+# Compute k-means clustering with k = 4
+set.seed(123)
+km.res <- kmeans(df, 4, nstart = 25)
+print(km.res)
+
+```
+
+
+6. Read the help of the function `fviz_cluster` in `factoextra` package and use it to plot the the result of th clustering.
+
+```{r}
+fviz_cluster(km.res, data = df)
+```
+
+
+7. Select a random subest `df_small` (test data) from the `USArrests` and use `cl_predict` function from the `clue` package to assign these data to the  corresponding clusters.    
+
+
+
+## DBSCAN 
+
+1. Load the `multishapes` data  and make sure taht `fpc`;`dbscan` and `factoextra` are loaded.  
+Ecpect the data by plotting 
+
+```
+plot(multishapes[,1], multishapes[, 2],
+    col = multishapes[, 3], pch = 19, cex = 0.8)
+```
+
+
+```{r}
+# Load the data 
+# Make sure that the package factoextra is installed
+data("multishapes", package = "factoextra")
+df <- multishapes[, 1:2]
+```
+
+Apply the `kmeans` function to the `multishapes` data (the first two columns) and plot the results 
+
+
+
+```{r}
+df <- multishapes[, 1:2]
+set.seed(123)
+km.res <- kmeans(df, 5, nstart = 25)
+fviz_cluster(km.res, df,  geom = "point", 
+             ellipse= FALSE, show.clust.cent = FALSE,
+             palette = "jco", ggtheme = theme_classic())
+```
+
+
+
+2. The function `dbscan()` to clustwer the data and plot the results 
+
+
+```{r}
+library("fpc")
+# Compute DBSCAN using fpc package
+set.seed(123)
+db <- fpc::dbscan(df, eps = 0.15, MinPts = 5)
+# Plot DBSCAN results
+plot.dbscan(db, df, main = "DBSCAN", frame = FALSE)
+
+```
+
+Note that, the function `plot.dbscan()` uses different point symbols for core points (i.e, seed points) and border points. Black points correspond to outliers. You can play with eps and MinPts for changing cluster configurations.
+
+3. Compare k-means and DBSCAN algorithms and conclude for this data set.
+
+4. plot the result of the DBSCAN clustering using the `fviz_cluster` function from the `factoextra` package 
+
+
+```{r}
+library("factoextra")
+fviz_cluster(db, df, stand = FALSE, ellipse = TRUE, geom = "point")
+```
+
+5. print the results of `fpc::dbscan()`
+
+```{r}
+# Print DBSCAN
+print(db)
+```
+
+Try to read the table
+
+```
+In the table above, column names are cluster number. Cluster 0 corresponds to outliers (black points in the DBSCAN plot).
+
+``` 
+
+6. Print the cluster membership using tje `$cluster` attribute 
+
+```{r}
+# Cluster membership. Noise/outlier observations are coded as 0
+# A random subset is shown
+db$cluster[sample(1:1089, 50)]
+
+```
+
+
+```
+The function print.dbscan() shows a statistic of the number of points belonging to the clusters that are seeds and border points.
+```
+
+DBSCAN algorithm requires users to specify the optimal `eps` values and the parameter `MinPts`. In the R code above, we used eps = 0.15 and MinPts = 5. One limitation of DBSCAN is that it is sensitive to the choice of eps, in particular if clusters have different densities. If eps is too small, sparser clusters will be defined as noise. If eps is too large, denser clusters may be merged together. This implies that, if there are clusters with different local densities, then a single eps value may not suffice. A natural question is: How to define the optimal value of eps?
+
+The method proposed here consists of computing the he k-nearest neighbor distances in a matrix of points.
+
+The idea is to calculate, the average of the distances of every point to its `k`-nearest neighbors. The value of `k` will be specified by the user and corresponds to MinPts.
+
+Next, these k-distances are plotted in an ascending order. The aim is to determine the "knee", which corresponds to the optimal eps parameter.
+
+A knee corresponds to a threshold where a sharp change occurs along the k-distance curve.
+
+The function kNNdistplot() [in dbscan package] can be used to draw the k-distance plot:
+
+```{r}
+library(dbscan)
+dbscan::kNNdistplot(df, k =  5)
+abline(h = 0.3, lty = 2)
+
+```
+
+
+
+
+

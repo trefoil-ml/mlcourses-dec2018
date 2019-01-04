@@ -1,0 +1,224 @@
+---
+title: "Feature Selection For Machine Learning"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+______________________________________________________________________________________________________
+
+In this exercise we will apply the knowledge learned from the previous lessons to create, evaluate and select features for machine learning models. 
+We use three months exchange rate dats between the EUR and American USD. From the time series we create 11 indicators (features) We are going to take several variables from some indicators. Then we will write a function that forms the final input set of 17 variables, that wil be used to predict if the exchange rate will go up or down. see hereunder.
+
+
+```{r}
+suppressMessages(library(tidyverse))
+
+```
+
+1. Load the file called `price.csv` form the folder `./data//EURUSD/` and call it `pricets`. Load `EURUSD30` as well and inspect the data. 
+2. Run first descriptive statistics as described in the course. 
+3. Add a column called `ts` by combining the columns `Date` and  `TF` and convet it to a Data-Time class using the `as.POSIXct` function.   
+4. Create a time series object (`xts`) using the column `High` and `ts` from the pricets data frame.
+5. plot the time series using the highchart function from `highcharter` package.
+
+
+
+```{r eval=FALSE, include=FALSE}
+
+suppressMessages(library(highcharter))
+suppressMessages(library(xts))
+load("./data/EURUSD/EURUSD30.RData")
+pricets     <- read.csv("./data/EURUSD/price.csv")
+pricets$ts  <- as.POSIXct(paste(pricets$Date, pricets$TF, format="%Y-%m-%d %H:%M:%S"))
+ts_price    <- pricets$ts[1:nrow(pricets)]
+tsprice     <- xts(pricets[,4],order.by = ts_price)
+p <- highchart(type = "stock") %>%  hc_add_series(tsprice, id = "FX close rate") 
+p
+```
+
+6. Create the indicators/features defined in the function `createIndicators` defined in the R script `createIndicators.R`. Just run this script. These indicators are very well-known and widely applied, so we are not going to discuss them again. 
+
+```{r}
+source("createIndicators.R")
+Indicators <- createIndicators(pricets)
+summary(Indicators)
+
+```
+
+We will use the lessons learned before to select the most import indicators that predict if the exchange rate will go up or down. To do so we use the `ZigZig` function from the `TTR` package. ZigZag higlights trends by removing time series changes smaller than a predifined change and interpolating lines between the extreme points.                
+
+7. Use the following function to calculate signals of two two Zigzag trends (ZZ) with a different leg length `ch = 25` and `ch = 50`:
+
+```{r}
+ZZ <- function(pr = pricets, ch = ch , mode="m") {
+  require(TTR)
+  if(ch > 1) ch <- ch/(10 ^ (Dig - 1))
+  if(mode == "m"){pr <- pr[ ,'Med']}
+  if(mode == "hl") {pr <- pr[ ,c("High", "Low")]}
+  if(mode == "cl") {pr <- pr[ ,c("Close")]}
+  zz <- ZigZag(pr, change = ch, percent = F, retrace = F, lastExtreme = T)
+  n <- 1:length(zz)
+  for(i in n) { if(is.na(zz[i])) zz[i] = zz[i-1]}
+  dz <- zz %>% diff %>% c(0,.)
+  sig <- sign(dz)
+  return(cbind(zz, sig))
+}
+
+```
+
+
+```{r}
+out1 <- ZZ(ch = 25)
+out2 <- ZZ(ch = 50)   
+```
+
+8. Use the ZZ with the shorter leg (ch = 25).  Combine input variables and the computed target in a dataframe and remove undefined data with a condition = "0" and remove the class "0" from the target.
+
+```{r}
+
+data <- cbind(as.data.frame(Indicators) , Class = factor(out1[ ,2])) %>% na.omit
+data <- data[data$Class != 0, ]
+data$Class <- rminer::delevels(data$Class, c("0", "1"), "1")
+
+```
+
+
+8. Use the function `table`  to loojk at  the distribution of classes in the target:
+
+```{r}
+table(data$Class)
+
+```
+
+9. Check how correlated the input data is
+
+```{r}
+suppressMessages(library(broom))
+suppressMessages(library(corrplot))
+descCor <- cor(data[ ,-ncol(data)])
+tidy(head(round(descCor,1)))
+corrplot(descCor, method="color")
+corrplot(descCor, method="number", number.digits= 1)
+```
+
+
+9. Use the `findCorrelation` function from the `caret` package to find input variables have correlation above 90%.
+
+```{r}
+highCor <- caret::findCorrelation(descCor, cutoff = .90)
+highCor
+```
+
+10. create dataset without these variables and compute the correlation of the remaining ones.
+
+```{r}
+data.f <- data[ ,-highCor]
+descCor1 <- cor(data.f[ ,-ncol(data.f)])
+tidy(head(round(descCor1,3)))
+corrplot(descCor1, method="color")
+corrplot(descCor1, method="number", number.digits= 3)
+```
+
+
+11. Divide the data set `data.f` without the highly correlated variables into a training and testing sets with ratio 2/3, normalize in the range of -1;1 and test the model. 
+For separation use the rminer::holdout() function (like in the course, see also the help function)  which will divide the set in two. 
+For normalization we use the `caret::preProcess()` function and the method = c("spatialSign"), see the help function. ( The spatial sign of a vector $w$ is $w /norm(w)$.)
+
+
+```{r}
+suppressMessages(library(rminer))
+suppressMessages(library(caret))
+idx <- rminer::holdout(y = data.f$Class)
+prep <- caret::preProcess(x = data.f[idx$tr, -ncol(data.f)],
+             method = c("spatialSign"))
+
+```
+
+12. Create a training set and test set using the predict fuunction from `rminer` (see course) and run a `randomUniformForest` model.      
+
+```{r}
+suppressMessages(library(randomUniformForest))
+
+x.train <-  predict(prep, data.f[idx$tr, -ncol(data.f)])
+x.test <-  predict(prep, data.f[idx$ts, -ncol(data.f)]) 
+y.train <- data.f[idx$tr, ncol(data.f)]
+y.test <- data.f[idx$ts, ncol(data.f)]
+ 
+ruf <- randomUniformForest( X = x.train, 
+                             Y = y.train,
+                             xtest = x.test, 
+                             ytest = y.test,
+                             mtry = 1, ntree = 300,
+                             threads = 2, 
+                             nodesize = 2
+                             )
+
+print(ruf)
+```
+
+
+13. Investigate the global importance of predictors by runing the `summary` to the fitted object. 
+
+```{r}
+summary(ruf)
+```
+
+
+14. If we stop right here, which is normally offered by many R packages, we would have to select several predictors with the best indicators of global importance. This choice does not provide good results as it does not take into account the mutual influence of the predictors.
+
+* run the help function for the `importance` method of the `randomUniformForest`
+* run the `importance` function on the fitted object and the test set and ` maxInteractions = 3`
+
+
+```{r}
+imp.ruf <- importance(ruf, Xtest = x.test, maxInteractions = 3)
+```
+
+* Compare the importance of variables on the basis of interaction with the global importance.
+* Investiagte  the importance of variables by classes taking into account their contribution and involvement. 
+* What about _tr_?
+
+15. Check the model's quality with the set of the 10 most important predictors and comapare it with the model with all variables.
+
+```{r}
+best = c("oscK","slowD","cci","DX","tr","cmo","vsig","chv","signal","ar")
+x.tr <- x.train[ ,best]
+x.tst <- x.test[ ,best]
+ruf.opt <- randomUniformForest(X = x.tr,
+                                Y = y.train,
+                                xtest = x.tst, 
+                                ytest = y.test,
+                                ntree = 300, 
+                                mtry = "random",
+                                nodesize = 1,
+                                threads = 2)
+ 
+ ruf.opt
+```
+
+
+15. Repeat the analysis (variable imporatnce) of the input variables in the optimal set. 
+
+
+```{r}
+imp.ruf.opt <- importance(ruf.opt, Xtest = x.tst)
+
+```
+
+
+
+
+
+

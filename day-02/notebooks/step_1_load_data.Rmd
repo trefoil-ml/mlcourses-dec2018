@@ -1,0 +1,61 @@
+---
+title: 'Lab: Linear Regression'
+author: "Hicham Zmarrou"
+date: '`r Sys.Date()`'
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+___________________________________________________________________________________________________________
+
+
+The MASS library contains the Boston data set, which records medv (median
+house value) for 506 neighborhoods around Boston. We will seek to predict
+medv using 13 predictors such as rm (average number of rooms per house),
+age (average age of houses), and lstat (percent of households with low
+socioeconomic status).
+
+```{r}
+library(MASS)
+data(Boston)
+names(Boston)
+```
+
+To find out more about the data set, we can type `?Boston` in R console.
+
+We will start by using the `lm()` function to fit a simple linear regression `lm()` model, with `medv` as the __Label__ and `lstat` as the __feature__. The basic syntax is `lm(y~x,data)`, where 'y'  is the `Label`, `x` is the feature, and data is the data set in which these two variables/columns are kept.
+
+
+```{r}
+lm.fit=lm(medv~lstat)
+```
+The command causes an error because R does not know where to find the  medv and lstat. The next line tells R that the variables are in Boston. If we attach Boston, the first line works fine because _R_ now recognizes the variables.
+
+```{r}
+lm.fit=lm(medv~lstat , data=Boston)
+
+```
+
+If we type `lm.fit`, some basic information about the model is output.
+
+```{r}
+lm.fit
+````
+
+For more detailed information, we use `summary(lm.fit)`. This gives us `p-values` and standard errors for the coefficients, as well as the `R^2` statistic and `F-statistic`  for the model.
+
+We can also fit another liner model by using other features. 
+
+If your data is in SQL database please refer to this [webpage](https://db.rstudio.com/)  
+

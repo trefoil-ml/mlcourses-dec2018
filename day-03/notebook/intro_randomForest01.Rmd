@@ -1,0 +1,133 @@
+---
+title: "Train a Random Forest model"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+
+## Train a Random Forest model
+
+Here you will use the `randomForest()` function from the randomForest package to train a Random Forest classifier to 
+predict loan default.
+
+* We already loaded  the dataset named `german.data` from the [Machine Learning Library of the UCI](https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data))
+* Inspect the description of the data from the [Machine Learning Library of the UCI website](https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data)) 
+* make a training and test set `credit_train` and `credit_test` datasets to be used for training and testing
+* Convert the response variable (Label) to a class variable ( instead of 1 and 2 integers), use as.factor
+*Use the randomForest::randomForest() function to train a Random Forest model on the credit_train dataset.
+The formula used to define the model is the same as for `rpart` -- we want to predict "default" as a function of all the other columns in the training set.
+Inspect the model output.
+
+
+
+``` 
+
+library(tidyverse)
+library(randomForest)
+
+# file to be loaded  
+f=file("https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/german.data")
+  
+# load the file   
+creditData   <- read.table(f,col.names =paste0("X","1":"21") ,sep=" ")
+# select a small subset of columns and  Change the names of the columns 
+
+# colnames(creditData) <- c("chk_acct", "duration", "credit_his", "purpose", "amount", "saving_acct", "present_emp", "installment_rate", "sex", "other_debtor", 
+#                            "present_resid", "property", "age", "other_install", "housing", "n_credits", 
+#                            "job", "n_people", "telephone", "foreign", "response")
+
+#creditData$response <- german_credit$response - 1
+#creditData$response <- as.factor(german_credit$response)
+
+creditsub  <- creditData[,c(2,8,11,13,21)]
+names(creditsub) <- c("months_loan_duration","percent_of_income", "years_at_residence","age","default")  
+creditsub$default <- ifelse(creditsub$default =="1", "No", "Yes")                  
+             
+ 
+smp_size <- f---(0.75 * nrow(creditsub))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+
+train_ind <- sa---(seq_len(nrow(cre---)), size = smp_size)
+
+# make a training and test set
+
+credit_test <-  creditsub[-train_ind, ]
+credit_train <- creditsub[---, ]
+
+## 
+## convert the default variable to factor(category) otherwise the algorithm will consider it as a regression problem 
+credit_train$default <- credit_train$default %>% as.factor()
+credit_test$default <- credit_test$default %>% as.factor()
+## 
+
+set.seed(1)  # Pour le reproductibilité
+credit_model <- randomForest(--- ~ ---, data = ---)
+
+# Print  model output                             
+print(credit_model) 
+
+```
+
+```{r}
+smp_size <- floor(0.75 * nrow(creditsub))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+
+train_ind <- sample(seq_len(nrow(creditsub)), size = smp_size)
+
+# make a training and test set
+credit_train <- creditsub[train_ind, ]
+credit_test <-  creditsub[-train_ind, ]
+
+## 
+
+credit_train$default= credit_train$default %>% as.factor()
+
+credit_test$default= credit_test$default %>% as.factor()
+## 
+
+set.seed(1)  # Pour le reproductibilité
+credit_model <- randomForest(formula = default ~., data = credit_train)
+
+# Print  model output                             
+print(credit_model) 
+```
+
+## Evaluate the OOB error
+
+
+
+```{r}
+# Grab OOB error matrix & take a look
+
+err <- credit_model$err.rate
+head(err)
+```
+
+
+```{r}
+tail(err, n=1)
+```
+
+```{r}
+# Print  model output                             
+print(credit_model)
+```
+```{r}
+plot(credit_model)
+```

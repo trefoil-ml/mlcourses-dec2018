@@ -1,0 +1,167 @@
+---
+title: "Evaluate out-of-bag error"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+
+## Evaluate out-of-bag error
+
+Here you will plot the OOB error as a function of the number of trees trained, and extract the final OOB error of the Random Forest model from the trained model object.
+
+
+* Make sure that `credit_model` trained in the previous exercise is loaded in the workspace.
+* Get the OOB error rate for the Random Forest model.
+* Plot the OOB error rate against the number of trees in the forest.
+
+```
+# Grab OOB error matrix & take a look
+err <- credit_model$err.rate
+head(err)
+
+# Look at final OOB error rate (last row in err matrix)
+oob_err <- err[___, "OOB"]
+print(oob_err)
+
+# Plot the model trained in the previous exercise
+plot(___)
+
+# Add a legend since it doesn't have one by default
+legend(x = "right", 
+       legend = colnames(err),
+       fill = 1:ncol(err))
+```
+
+
+
+
+
+
+
+## Evaluate model performance on a test set
+
+Use the caret::confusionMatrix() function to compute test set accuracy and generate a confusion matrix. Compare the test set accuracy to the OOB accuracy.
+
+* Generate class predictions for the credit_test data frame using the credit_model object.
+* Using the caret::confusionMatrix() function, compute the confusion matrix for the test set.
+* Compare the test set accuracy reported from the confusion matrix to the OOB accuracy. The OOB error is stored in oob_err, which is already in your workspace, and so OOB accuracy is just 1 - oob_err.
+
+
+```
+# Generate predicted classes using the model object
+class_prediction <- predict(object = ___,   # model object 
+                            newdata = ___,  # test dataset
+                            type = "class") # return classification labels
+                            
+# Calculate the confusion matrix for the test set
+cm <- confusionMatrix(data = ___,       # predicted classes
+                      reference = ___)  # actual classes
+print(cm)
+
+# Compare test set accuracy to OOB accuracy
+paste0("Test Accuracy: ", cm$overall[1])
+paste0("OOB Accuracy: ", 1 - oob_err)
+
+```
+
+
+
+
+
+
+## Solutions 
+
+### Evaluate model performance on a test set
+```{r}
+err <- credit_model$err.rate
+head(err)
+```
+
+
+
+
+```{r}
+
+oob_err <- err[nrow(err), "OOB"]
+print(oob_err)
+
+
+```
+
+
+```{r}
+plot(credit_model)
+legend(x = "right", 
+       legend = colnames(err),
+       fill = 1:ncol(err))   
+```
+
+
+
+### Evaluate model performance on a test set
+
+```{r}
+# predict train 
+class_prediction <- predict(object = credit_model,   # model 
+                            newdata = credit_test,  # test dataset
+                            type = "class") # retourne classification 
+                            
+# Calcule le confusion matrix pour le test set
+cm <-caret:: confusionMatrix(data = class_prediction,       # Classes predites
+                      reference = credit_test$default)  # Classe observés
+print(cm)
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction no yes
+##        no   7  10
+##        yes 22  65
+##                                           
+##                Accuracy : 0.6923          
+##                  95% CI : (0.5942, 0.7791)
+##     No Information Rate : 0.7212          
+##     P-Value [Acc > NIR] : 0.77992         
+##                                           
+##                   Kappa : 0.1237          
+##  Mcnemar's Test P-Value : 0.05183         
+##                                           
+##             Sensitivity : 0.24138         
+##             Specificity : 0.86667         
+##          Pos Pred Value : 0.41176         
+##          Neg Pred Value : 0.74713         
+##              Prevalence : 0.27885         
+##          Detection Rate : 0.06731         
+##    Detection Prevalence : 0.16346         
+##       Balanced Accuracy : 0.55402         
+##                                           
+##        'Positive' Class : no              
+## 
+# Compare le  test set accuracy au OOB accuracy
+paste0("Test Accuracy: ", cm$overall[1])
+## [1] "Test Accuracy: 0.692307692307692"
+paste0("OOB Accuracy: ", 1 - oob_err)  
+## [1] "OOB Accuracy: 0.674641148325359"
+# Predict sur credit_test
+rf_pred <- predict(object = credit_model,
+            newdata =credit_test,
+            type = "prob")
+
+                
+# Compute le  AUC (`actual` est binaire et prend 0 ou 1)
+auc(actual = ifelse(credit_test$default == "yes", 1, 0), 
+    predicted = rf_pred[,"yes"])                    
+## [1] 0.5485057
+```
+

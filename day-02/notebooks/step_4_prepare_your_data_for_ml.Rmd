@@ -1,0 +1,158 @@
+---
+title: "Prepare Your Data For Machine Learning"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+_____________________________________________________________________________________________________
+
+
+```{r}
+suppressMessages(library(tidyverse))
+
+```
+Many machine learning algorithms make assumptions about your data. It is often a very good
+idea to prepare your data in such way to best expose the structure of the problem to the machine
+learning algorithms that you intend to use. In this chapter you will discover how to prepare
+your data for machine learning in `R`. After completing this lesson you
+will know how to:
+
+1. Rescale data.
+
+2. Standardize data.
+
+3. Normalize data.
+
+4. Binarize data.
+
+Let's get started.
+
+## Need For Data Pre-processing
+
+Many models demand numerical input data to be in a certain range (normalization, standardization), or to be converted in a certain way (factors). For example, neural networks and support vector machines (SVM) accept input data in the range [-1, 1] or [0, 1]. Many packages in the `R` language either offer special features for such transformation or execute the conversion themselves. Please remember that the definition of preprocessing parameters is performed only on a training set of input data. Testing and validation sets, new data, incoming prediction models are converted with parameters obtained on the training set.
+
+Generally, I would recommend creating many different views and transforms of your data, then exercise a handful of algorithms on each view of your dataset. This will help you to flush out which data transforms might be better at exposing the structure of your problem in general.
+
+The excellent "clusterSim" package, assigned to finding the optimal data clustering procedures, has the `data.Normalization()` function which normalizes data in 18 ways by both columns and rows. I will simply list all of them:
+
++ n1 standardization $\frac{X - \overline{X}}{\sigma(X)}$;
+
++ n2: positional standardization $\frac{X - median(X)}{\sigma(X)}$;
+
++ n3: unitization	$\frac{X - \overline{X}}{range(X)}$;
+
++ n3a: positional	unitization $\frac{X - median(X)}{range(X)}$; 
+
++ n4: unitization	with zero minimum $\frac{X - \min(X)}{range(X)}$; 
+
++ n5: normalization in range <-1, 1> $\frac{X-mean(X)}{range(X)}$;  
+
++ n5a: positional	normalization in range <-1,1> $\frac{X - median(X)}{\max(|X-median(X)|)}$;
+
++ n6: quotient transformation $\frac{X}{\sigma(X)}$;
+
++ n6a:positional quotient transformation $\frac{X}{mad(X)}$; 
+
++ n7: quotient transformation $\frac{X}{range(X)}$;
+
++ n8: quotient transformation $\frac{X}{maX}$;
+
++ n9: quotient transformation $\frac{X}{\overline{X}}$;
+
++ n9a: positional quotient transformation $\frac{X}{median(X)}$;
+
++ n10:quotient transformation $\frac{X}{\sum X}$;
+
++ n11:quotient transformation  $\frac{X}{\sqrt{\sum_i^ n X^2}}$;
+
++ n12: normalization $\frac{X-\overline{X}}{\sqrt{\sum_i^ n (X-\overline{X})^2}}$; 
+
++ n12a: positional normalization  $\frac{X-median(X)}{\sqrt{\sum_i^ n (X-\overline{X})^2}}$;
+
++ n13: normalization with zero being the central point $\frac{X-midrange(X)}{range/2}$.
+
+
+### Rescale Data
+
+When your data is comprised of attributes with varying scales, many machine learning algorithms can benefit from rescaling the attributes to all have the same scale. Often this is referred to as normalization and attributes are often rescaled into the range between 0 and 1. This is useful for optimization algorithms used in the core of machine learning algorithms like gradient
+descent. It is also useful for algorithms that weight inputs like regression and neural networks
+and algorithms that use distance measures like k-Nearest Neighbors. You can rescale your data using the "clusterSim" package. 
+
+```{r}
+suppressMessages(library(clusterSim))
+suppressMessages(library(tidyverse))
+data <- read_csv("./data/pima_indians_diabetes.csv", col_names = FALSE)
+names <- c('preg', 'plas', 'pres', 'skin', 'test', 'mass', 'pedi', 'age', 'class')
+names(data) <- names
+dataRescale <-  cbind(data.frame(data.Normalization(as.matrix(data[, -9]), type="n4", normalization="column")),data[,9])
+
+```
+
+
+### Standardize Data
+Standardization is a useful technique to transform attributes with a Gaussian distribution and differing means and standard deviations to a standard Gaussian distribution with a mean of 0 and a standard deviation of 1. It is most suitable for techniques that assume a Gaussian
+distribution in the input variables and work better with rescaled data, such as linear regression, logistic regression and linear discriminate analysis. You can standardize data using the `data.Normalization()` function
+
+```{r}
+dataStand <-  cbind(data.frame(data.Normalization(as.matrix(data[, -9]), type="n1", normalization="column")),data[,9])
+
+```
+
+### Normalize Data
+Normalizing  refers to rescaling each observation (row) to have a length of 1 (called a unit norm or a vector with the length of 1 in linear algebra). This pre-processing method can be useful for sparse datasets (lots of zeros) with attributes of varying scales when using algorithms that weight input values such as neural networks and algorithms that use distance measures such as k-Nearest Neighbors. You
+
+```{r}
+
+dataNorm <-  cbind(data.frame(data.Normalization(as.matrix(data[, -9]), type="n1", normalization="row")),data[,9])
+
+```
+
+
+### Binarize Data (Make Binary)
+
+You can transform your data using a binary threshold. All values above the threshold are marked 1 and all equal to or below are marked as 0. This is called binarizing your data or thresholding your data. It can be useful when you have probabilities that you want to make crisp values. It is also useful when feature engineering and you want to add new features that indicate something meaningful. You can create new binary attributes in `R` with 
+
+
+```{r}
+
+data$binAge <- ifelse(data$age>30, 1, 0)
+
+```
+
+
+### Recoding (categorizing) continuous variables 
+
+Sometimes we wantt to make the analysis simpler and more acceptable to the consumers of the analysis. Sometimes, the results of an analysis are too much for the end users to make sense out of, and in such cases, it might make it easier for them to wrap their minds around. In this case recoding continuous variables into can be a good idea. You can code the continuous variables categorical values. This step assumes that you have  previously explored the distributions of the continuous variables in order to determine appropriate cutoffs
+
+```{r}
+
+data$catAge = cut(data$age, breaks=c(0,25,30,40,50,99))
+
+```
+
+
+## Summary
+In this chapter you discovered how you can prepare your data for machine learning in `R` using caret. You now have recipes to:
++ Rescale data.
++ Standardize data.
++ Normalize data.
++ Binarize data.
+
+##  Next
+You now know how to transform your data to best expose the structure of your problem to the modeling algorithms. In the next lesson you will discover how to select the features of your data that are most relevant to making predictions.
+
+## Exercises 
+
+Reproduce the previous operations in an `R` script and ask why questions.   

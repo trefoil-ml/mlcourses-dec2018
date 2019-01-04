@@ -1,0 +1,28 @@
+---
+title: "Trees based methods"
+author: "Hicham Zmarrou, PhD"
+date: '`r Sys.Date()`<br /> <br />'
+output:
+  beamer_presentation:
+    colortheme: default
+    fonttheme: default
+    incremental: yes
+    theme: Malmoe
+  ioslides_presentation:
+    incremental: yes
+subtitle: Decision Trees, Random Forests and Gradient Boosting
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Aims of this lesson
+
+* Understand what are decision trees, random forests and gradient boosting, how they works, and how to evaluate a DT or a RF model.
+
+* Decision tree is a type of supervised learning algorithm (having a pre-defined target variable) mostly used in classification problems.
+
+* It works for both categorical and continuous input and output variables.
+
+* In this technique, we split the population or sample into two or more homogeneous sets (or sub-populations) based on most significant splitter$/$differentiator in input variables.

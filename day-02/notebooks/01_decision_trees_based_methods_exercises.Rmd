@@ -1,0 +1,165 @@
+---
+title: "ML Algorithms for classification"
+subtitle: "Decision trees"
+venue: "GL R courses"
+author: "Hicham Zmarrou"
+date: "Notebook -- <http://bit.ly/2q9NPSU>  <br /> <br />"
+output:
+  html_notebook:
+    highlight: pygments
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: FALSE
+---
+
+
+<hr>
+
+[Visit my website](http://aardona.nl/) for more like this!
+
+__References__
+
+Most of this material is borrowed from:
+
+* Textbook: [An Introduction to Recursive Partitioning Using the RPART Routines](https://cran.r-project.org/web/packages/rpart/vignettes/longintro.pdf)
+
+____________________________________
+
+
+You are here: Home / Exercises / Exercises (beginner) / Recursive Partitioning and Regression Trees Exercises
+
+ 
+################
+##            ##
+## Exercise 1 ##
+##            ##
+################
+Consider the Kyphosis data frame(type `help("kyphosis")` for more details), that contains:
+
+
+* `Kyphosis`:a factor with levels "absent" and  "present"" indicating if a kyphosis (a type of deformation) was present after the operation.
+
+* __Age__: in months.
+
+* __Number__: the number of vertebrae involved.
+
+* __Start__: the number of the first (topmost) vertebra operated on.
+
+
+1. Build a tree to classify `Kyphosis` from `Age`, `Number` and `Start`.
+
+
+################
+##            ##
+## Exercise 2 ##
+##            ##
+################
+
+Consider the tree build in exercise 1.
+1.  Which variables are used to explain kyhosis presence?
+2.  How many observations contains the terminal nodes.
+
+
+
+
+###############
+##            ##
+## Exercise 3 ##
+##            ##
+################
+
+Consider the Kyphosis data frame.
+
+1. Build a tree using the first 60 observations of kyphosis.
+
+2. Predict the kyphosis presence for the other 21 observations.
+
+3. Which is the misclassification rate (prediction error)
+
+###############
+##            ##
+## Exercise 4 ##
+##            ##
+################
+
+Consider the iris data frame(type `help('iris')` for more details).
+
+1. Build a tree to classify Species from the other variables.
+
+2. Plot the trees, add nodes information.
+
+###############
+##            ##
+## Exercise 5 ##
+##            ##
+################
+
+Consider the tree build in exercise 4.
+
+1. Prune the the using median complexity parameter (cp) associated to the tree.
+
+2. Plot in the same window, the pruned and the original tree.
+
+################
+##            ##
+## Exercise 6 ##
+##            ##
+################
+
+Consider the tree build in exercise 4.
+
+1. In which terminal nodes is clasified each oobservations of iris?
+
+2. Which Specie has a flower of Petal.Length greater than 2.45 and Petal.Width less than 1.75.
+
+###############
+##            ##
+## Exercise 7 ##
+##            ##
+################
+
+Consider the car90 data frame(type help('car90') for more details).
+
+1. Build a tree to predict Price from the other variables.
+
+2. Plot the trees, add nodes information.
+
+###############
+##            ##
+## Exercise 8 ##
+##            ##
+################
+
+Consider the tree build in exercise 7.
+
+1. Which variables are used to explain the price?
+
+2. Which terminal nodes have a value of mean Price, less tan mean(car90$Price)?
+
+###############
+##            ##
+## Exercise 9 ##
+##            ##
+################
+
+Consider the car.test.frame data frame (type help('car.test.frame') for more details).
+
+1. Build a tree to explain Mileage using the other variables.
+
+2. Snip the tree in nodes number 2.
+
+3. Plot both tree together
+
+################
+##            ##
+## Exercise 10##
+##            ##
+################
+
+Consider the tree build in exercise 9.
+
+1.  Which is the depth of the tree (with the root node counted as depth 0).
+
+2. Set the maximum depth of the final tree on 2
+

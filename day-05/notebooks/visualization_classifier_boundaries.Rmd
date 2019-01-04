@@ -1,0 +1,356 @@
+---
+title: "Comparing Decision Boundaries of Different Classifiers"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman 
+    highlight: github
+   
+---
+___________________________________________________________________________________________________________
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='img/', echo=TRUE, warning=FALSE, message=FALSE,
+                      digits = 3)
+Sys.setenv(TZ="Europe/Berlin")
+set.seed(2003)
+```
+
+
+
+Classifiers create decision boundaries to discriminate between classes. Different classifiers are able to create different shapes of decision boundaries (e.g., some are strictly linear) and thus some classifiers may perform better for certain datasets. This page visualizes the decision boundaries found by several popular classification methods.
+
+## Simple Plot Function for Decision Boundaries
+
+The following plot adds the decision boundary by evaluating the classifier at evenly spaced grid points. Note that low resolution (to make evaluation faster) will make the decision boundary look like it has small steps even if it is a (straight) line.
+
+
+```{r}
+
+decisionplot <- function(model, data, class = NULL, predict_type = "class",
+  resolution = 100, showgrid = TRUE, ...) {
+
+  if(!is.null(class)) cl <- data[,class] else cl <- 1
+  data <- data[,1:2]
+  k <- length(unique(cl))
+
+  plot(data, col = as.integer(cl)+1L, pch = as.integer(cl)+1L, ...)
+
+  # make grid
+  r <- sapply(data, range, na.rm = TRUE)
+  xs <- seq(r[1,1], r[2,1], length.out = resolution)
+  ys <- seq(r[1,2], r[2,2], length.out = resolution)
+  g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
+  colnames(g) <- colnames(r)
+  g <- as.data.frame(g)
+
+  ### guess how to get class labels from predict
+  ### (unfortunately not very consistent between models)
+  p <- predict(model, g, type = predict_type)
+  if(is.list(p)) p <- p$class
+  p <- as.factor(p)
+
+  if(showgrid) points(g, col = as.integer(p)+1L, pch = ".")
+
+  z <- matrix(as.integer(p), nrow = resolution, byrow = TRUE)
+  contour(xs, ys, z, add = TRUE, drawlabels = FALSE,
+    lwd = 2, levels = (1:(k-1))+.5)
+
+  invisible(z)
+}
+```
+
+## Iris Dataset
+
+For easier visualization, we use on two dimensions of the Iris dataset.
+
+```{r}
+set.seed(100)
+data(iris)
+
+```
+
+```{r}
+# Three classes
+x <- iris[1:150, c("Sepal.Length", "Sepal.Width", "Species")]
+
+head(x)
+```
+
+```{r}
+plot(x[,1:2], col = x[,3])
+
+```
+
+
+### K-Nearest Neighbors Classifier
+
+```{r}
+library(caret)
+
+model <- knn3(Species ~ ., data=x, k = 1)
+decisionplot(model, x, class = "Species", main = "kNN (1)")
+```
+
+another value for `k`
+
+```{r}
+model <- knn3(Species ~ ., data=x, k = 10)
+decisionplot(model, x, class = "Species", main = "kNN (10)")
+```
+
+
+### Naive Bayes Classifier
+
+```{r}
+
+library(e1071)
+model <- naiveBayes(Species ~ ., data=x)
+decisionplot(model, x, class = "Species", main = "naive Bayes")
+
+```
+
+### Linear Discriminant Analysis
+
+```{r}
+library(MASS)
+model <- lda(Species ~ ., data=x)
+decisionplot(model, x, class = "Species", main = "LDA")
+```
+
+### Logistic Regression
+Only considers 2 classes
+
+```{r}
+model <- glm(Species ~., data = x, family=binomial(link='logit'))
+## Warning: glm.fit: algorithm did not converge
+## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+class(model) <- c("lr", class(model))
+predict.lr <- function(object, newdata, ...)
+  predict.glm(object, newdata, type = "response") > .5
+decisionplot(model, x, class = "Species", main = "Logistic Regression")
+```
+
+### Decision Trees
+```{r}
+
+library("rpart")
+model <- rpart(Species ~ ., data=x)
+decisionplot(model, x, class = "Species", main = "CART")
+```
+
+```{r}
+model <- rpart(Species ~ ., data=x,
+  control = rpart.control(cp = 0.001, minsplit = 1))
+decisionplot(model, x, class = "Species", main = "CART (overfitting)")
+```
+
+
+```{r}
+library(C50)
+model <- C5.0(Species ~ ., data=x)
+decisionplot(model, x, class = "Species", main = "C5.0")
+```
+
+
+```{r}
+library(randomForest)
+
+model <- randomForest(Species ~ ., data=x)
+decisionplot(model, x, class = "Species", main = "Random Forest")
+```
+
+
+```{r}
+# SVM
+library(e1071)
+model <- svm(Species ~ ., data=x, kernel="linear")
+decisionplot(model, x, class = "Species", main = "SVD (linear)")
+```
+
+```{r}
+model <- svm(Species ~ ., data=x, kernel = "radial")
+decisionplot(model, x, class = "Species", main = "SVD (radial)")
+```
+
+```{r}
+model <- svm(Species ~ ., data=x, kernel = "polynomial")
+decisionplot(model, x, class = "Species", main = "SVD (polynomial)")
+```
+
+
+```{r}
+model <- svm(Species ~ ., data=x, kernel = "sigmoid")
+decisionplot(model, x, class = "Species", main = "SVD (sigmoid)")
+```
+
+### Single Layer Feed-forward Neural Networks
+
+
+```{r}
+library(nnet)
+model <- nnet(Species ~ ., data=x, size = 1, maxit = 1000, trace = FALSE)
+decisionplot(model, x, class = "Species", main = "NN (1)")
+```
+ 
+
+```{r}
+model <- nnet(Species ~ ., data=x, size = 2, maxit = 1000, trace = FALSE)
+decisionplot(model, x, class = "Species", main = "NN (2)")
+```
+
+
+```{r}
+model <- nnet(Species ~ ., data=x, size = 4, maxit = 1000, trace = FALSE)
+decisionplot(model, x, class = "Species", main = "NN (4)")
+
+```
+
+
+```{r}
+model <- nnet(Species ~ ., data=x, size = 10, maxit = 1000, trace = FALSE)
+decisionplot(model, x, class = "Species", main = "NN")
+
+```
+
+
+### Circle Dataset
+This set is not linearly separable!
+
+
+```{r}
+set.seed(1000)
+library(mlbench)
+x <- mlbench.circle(100)
+
+x <- cbind(as.data.frame(x$x), factor(x$classes))
+colnames(x) <- c("x", "y", "class")
+
+plot(x[,1:2], col = x[,3])
+``` 
+
+
+
+### K-Nearest Neighbors Classifier
+```{r}
+library(caret)
+model <- knn3(class ~ ., data=x, k = 1)
+decisionplot(model, x, class = "class", main = "kNN (1)")
+```
+
+```{r}
+model <- knn3(class ~ ., data=x, k = 10)
+decisionplot(model, x, class = "class", main = "kNN (10)")
+```` 
+
+### Naive Bayes Classifier
+
+```{r}
+library(e1071)
+model <- naiveBayes(class ~ ., data=x)
+decisionplot(model, x, class = "class", main = "naive Bayes")
+```
+
+### Linear Discriminant Analysis
+
+```{r}
+
+library(MASS)
+model <- lda(class ~ ., data=x)
+decisionplot(model, x, class = "class", main = "LDA")
+
+```
+
+### Logistic Regression
+Only considers for 2 classes
+
+```{r}
+model <- glm(class ~., data = x, family=binomial(link='logit'))
+class(model) <- c("lr", class(model))
+predict.lr <- function(object, newdata, ...)
+  predict.glm(object, newdata, type = "response") > .5
+
+decisionplot(model, x, class = "class", main = "Logistic Regression")
+```
+
+### Decision Trees
+
+```{r}
+library("rpart")
+model <- rpart(class ~ ., data=x)
+decisionplot(model, x, class = "class", main = "CART")
+
+```
+
+```{r}
+model <- rpart(class ~ ., data=x,
+  control = rpart.control(cp = 0.001, minsplit = 1))
+decisionplot(model, x, class = "class", main = "CART (overfitting)")
+```
+
+```{r}
+
+library(C50)
+model <- C5.0(class ~ ., data=x)
+decisionplot(model, x, class = "class", main = "C5.0")
+```
+
+```{r}
+library(randomForest)
+model <- randomForest(class ~ ., data=x)
+decisionplot(model, x, class = "class", main = "Random Forest")
+```
+
+SVM
+```{r}
+library(e1071)
+model <- svm(class ~ ., data=x, kernel="linear")
+decisionplot(model, x, class = "class", main = "SVD (linear)")
+```
+
+
+```{r}
+model <- svm(class ~ ., data=x, kernel = "radial")
+decisionplot(model, x, class = "class", main = "SVD (radial)")
+```
+
+
+```{r}
+model <- svm(class ~ ., data=x, kernel = "polynomial")
+decisionplot(model, x, class = "class", main = "SVD (polynomial)")
+```
+
+
+
+```{r}
+model <- svm(class ~ ., data=x, kernel = "sigmoid")
+decisionplot(model, x, class = "class", main = "SVD (sigmoid)")
+```
+
+### Neural Networks
+
+```{r}
+library(nnet)
+model <- nnet(class ~ ., data=x, size = 1, maxit = 1000, trace = FALSE)
+decisionplot(model, x, class = "class", main = "NN (1)")
+```
+
+
+```{r}
+model <- nnet(class ~ ., data=x, size = 2, maxit = 1000, trace = FALSE)
+decisionplot(model, x, class = "class", main = "NN (2)")
+```
+
+
+```{r}
+model <- nnet(class ~ ., data=x, size = 4, maxit = 10000, trace = FALSE)
+decisionplot(model, x, class = "class", main = "NN (4)")
+```
+
+```{r}
+model <- nnet(class ~ ., data=x, size = 10, maxit = 10000, trace = FALSE)
+decisionplot(model, x, class = "class", main = "NN (10)")
+```
+

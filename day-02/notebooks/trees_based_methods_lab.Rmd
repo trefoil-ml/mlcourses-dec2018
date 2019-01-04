@@ -1,0 +1,117 @@
+---
+title: 'Lab: Trees based methods'
+author: "Hicham Zmarrou"
+date: '`r Sys.Date()`'
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+
+```{r}
+options(tz="Europe/Berlin")
+suppressMessages(library(tidyverse))
+
+```
+___________________________________________________________________________________________________________
+
+
+
+### Working with decision trees in R
+
+```{r echo=TRUE}
+library(rpart)
+set.seed(9850) 
+idxr  <- runif(nrow(iris))
+irisr <-iris[order(idxr),]
+miris <- rpart(Species ~., data = irisr[1:100,],
+               control = rpart.control(cp=0.005, 
+                                       xval=10, 
+                                       maxdepth=5))
+```
+
+$cp$ is the complexity parameter, see `help(rpart.control)` 
+
+
+
+```{r echo=TRUE}
+print(miris) 
+```
+
+
+### how to read the output?
+
+node), split, n, loss, yval, (yprob)
+
+1.  node): indicates the node number; 2.  split: indicates the split criterion
+
+3.  n: indicates the number of individuals in the groupe
+
+4.  loss: indicates the the number of individuals misclassified
+
+5.   yval: indicates the predicted value
+
+6.  (yprob): indicates the probability of belonging to each class    
+    
+__Note:__ when you fit a tree using `rpart`, the fitting routine automatically  performs `10-fold CV` and stores the errors for later use  (such as for pruning the tree)
+
+
+
+
+
+
+```{r  message=FALSE, warning=FALSE, paged.print=TRUE}
+library(rpart.plot)
+rpart.plot(miris)
+
+```
+
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+
+rpart.plot(miris, type = 3)
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+library(rattle)
+library(RColorBrewer)
+fancyRpartPlot(miris)
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+summary(miris)
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+piris <- predict(miris, irisr[101:150,], type = "class")
+table(irisr[101:150,5],piris)
+```
+
+
+For more detailed information, we use `summary(lm.fit)`. This gives us `p-values` and standard errors for the coefficients, as well as the `R^2` statistic and `F-statistic`  for the model.
+
+We can also fit another liner model by using other features. 
+
+If your data is in SQL database please refer to this [webpage](https://db.rstudio.com/)  
+
